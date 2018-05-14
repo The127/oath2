@@ -66,6 +66,7 @@ where
 }
 
 fn handle_hello(msg: switch::IncomingMsg) {
+    //TODO: handle version error
     let response = ds::OfMsg::generate(*msg.msg.header().xid(), ds::OfPayload::Hello);
     msg.reply_ch
         .send(response)
