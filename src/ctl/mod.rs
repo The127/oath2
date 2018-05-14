@@ -26,12 +26,12 @@ where
     thread::Builder::new()
         .name("Handler-Thread".to_string())
         .spawn(move || loop {
-            match tcp_r.recv(){
+            match tcp_r.recv() {
                 Ok(of_msg) => {
                     info!("Handling msg: {:?}.", of_msg.msg);
                     //TODO: match msg type and automatically handle special types (hello, ...)
                     handler(of_msg);
-                },
+                }
                 Err(err) => panic!(err),
             }
         })?;
