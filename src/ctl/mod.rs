@@ -2,15 +2,15 @@ use std::net::{TcpListener, ToSocketAddrs};
 use std::sync::mpsc::channel;
 use std::thread;
 
-use super::err::*;
 use super::ds;
+use super::err::*;
 
 pub mod switch;
 
 /// starts the controller at the given address (eg. "127.0.0.1:6653")
 /// the given handler function will not receive hellos or echo requests or similar messages
 /// these are handled automatically by the controller
-/// also the controller will create a flow in the switch that sends all 
+/// also the controller will create a flow in the switch that sends all
 /// unknown messages to the controller automatically on connection setup
 /// this function does not return
 pub fn start_controller<A, F>(addr: A, handler: F) -> Result<()>
@@ -65,18 +65,22 @@ where
     Ok(())
 }
 
-fn handle_hello(msg: switch::IncomingMsg){
+fn handle_hello(msg: switch::IncomingMsg) {
     let payload = ds::OfPayload::Hello;
     let mut header = payload.generate_header();
     header.set_xid(*msg.msg.header().xid());
     let response = ds::OfMsg::new(header, payload);
-    msg.reply_ch.send(response).expect("could not send hello response");
+    msg.reply_ch
+        .send(response)
+        .expect("could not send hello response");
 }
 
-fn handle_echo_request(msg: switch::IncomingMsg){
+fn handle_echo_request(msg: switch::IncomingMsg) {
     let payload = ds::OfPayload::EchoResponse;
     let mut header = payload.generate_header();
     header.set_xid(*msg.msg.header().xid());
     let response = ds::OfMsg::new(header, payload);
-    msg.reply_ch.send(response).expect("could not send hello response");
+    msg.reply_ch
+        .send(response)
+        .expect("could not send hello response");
 }

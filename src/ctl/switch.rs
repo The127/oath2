@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use ::std::io::{Read, Write};
+use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
@@ -49,26 +49,19 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                     ds::Type::RoleReply => ds::OfPayload::RoleReply,
                     ds::Type::GetAsyncReply => ds::OfPayload::GetAsyncReply,
                     ttype => {
-                        error!(
-                            "received not allowed ofmsg type {:?}",
-                            header.ttype()
-                        );
-                        panic!(
-                            "received not allowed ofmsg type {:?}",
-                            header.ttype()
-                        );
+                        error!("received not allowed ofmsg type {:?}", header.ttype());
+                        panic!("received not allowed ofmsg type {:?}", header.ttype());
                     }
                 };
                 info!("Read Payload: {:?}.", payload);
 
                 // send channel message (with sender channel in message)
-                ctl_ch.send(IncomingMsg{
-                    reply_ch: send.clone(),
-                    msg: ds::OfMsg::new(
-                        header,
-                        payload,
-                    ),
-                }).expect("error while sending msg via channel to controller");
+                ctl_ch
+                    .send(IncomingMsg {
+                        reply_ch: send.clone(),
+                        msg: ds::OfMsg::new(header, payload),
+                    })
+                    .expect("error while sending msg via channel to controller");
             }
         })?;
 
@@ -85,7 +78,9 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                         // send message to switch
                         info!("Sending {:?} to: {:?}.", of_msg, stream_out.peer_addr());
                         let write_slice = &Into::<Vec<u8>>::into(of_msg)[..];
-                        stream_out.write_all(write_slice).expect("could not write bytes to stream");
+                        stream_out
+                            .write_all(write_slice)
+                            .expect("could not write bytes to stream");
                     }
                     Err(err) => panic!(err),
                 }

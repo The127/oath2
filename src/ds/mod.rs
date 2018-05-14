@@ -5,6 +5,8 @@ use std::io::Cursor;
 
 use super::err::*;
 
+pub mod ports;
+
 /// defines an OpenFlow message
 /// header + payload
 #[derive(Getters, Debug)]
@@ -17,7 +19,7 @@ pub struct OfMsg {
 
 impl OfMsg {
     pub fn new(header: Header, payload: OfPayload) -> Self {
-        OfMsg{
+        OfMsg {
             header: header,
             payload: payload,
         }
@@ -50,7 +52,8 @@ pub struct Header {
     /// Transaction id associated with this packet.
     /// Replies use the same id as was in the request
     /// to facilitate pairing.
-    #[get = "pub"] #[set = "pub"]
+    #[get = "pub"]
+    #[set = "pub"]
     xid: u32,
 }
 
@@ -261,20 +264,20 @@ pub enum OfPayload {
 impl OfPayload {
     pub fn generate_header(&self) -> Header {
         match self {
-            OfPayload::Hello => Header{
+            OfPayload::Hello => Header {
                 ttype: Type::Hello,
                 length: HEADER_LENGTH as u16,
                 version: Version::V1_3,
                 xid: 0,
             },
             //OfPayload::Error,
-            OfPayload::EchoRequest => Header{
+            OfPayload::EchoRequest => Header {
                 ttype: Type::EchoRequest,
                 length: HEADER_LENGTH as u16,
                 version: Version::V1_3,
                 xid: 0,
             },
-            OfPayload::EchoResponse => Header{
+            OfPayload::EchoResponse => Header {
                 ttype: Type::EchoReply,
                 length: HEADER_LENGTH as u16,
                 version: Version::V1_3,
@@ -282,30 +285,30 @@ impl OfPayload {
             },
             //OfPayload::Experimenter,
             //OfPayload::FeaturesRequest,
-            //OfPayload::FeaturesReply, 
+            //OfPayload::FeaturesReply,
             //OfPayload::GetConfigRequest,
-            //OfPayload::GetConfigReply, 
-            //OfPayload::SetConfig,      
-            //OfPayload::PacketIn, 
+            //OfPayload::GetConfigReply,
+            //OfPayload::SetConfig,
+            //OfPayload::PacketIn,
             //OfPayload::FlowRemoved,
             //OfPayload::PortStatus,
-            //OfPayload::PacketOut, 
-            //OfPayload::FlowMod,   
-            //OfPayload::GroupMod,  
-            //OfPayload::PortMod,   
-            //OfPayload::TableMod,  
-            //OfPayload::MultipartRequest, 
-            //OfPayload::MultipartReply,   
+            //OfPayload::PacketOut,
+            //OfPayload::FlowMod,
+            //OfPayload::GroupMod,
+            //OfPayload::PortMod,
+            //OfPayload::TableMod,
+            //OfPayload::MultipartRequest,
+            //OfPayload::MultipartReply,
             //OfPayload::BarrierRequest,
             //OfPayload::BarrierReply,
-            //OfPayload::QueueGetConfigRequest, 
-            //OfPayload::QueueGetConfigReply,  
-            //OfPayload::RoleRequest, 
-            //OfPayload::RoleReply,  
+            //OfPayload::QueueGetConfigRequest,
+            //OfPayload::QueueGetConfigReply,
+            //OfPayload::RoleRequest,
+            //OfPayload::RoleReply,
             //OfPayload::GetAsyncRequest,
-            //OfPayload::GetAsyncReply, 
-            //OfPayload::SetAsync,     
-            //OfPayload::MeterMod, 
+            //OfPayload::GetAsyncReply,
+            //OfPayload::SetAsync,
+            //OfPayload::MeterMod,
             _ => panic!("not yet implemented header gen"),
         }
     }
