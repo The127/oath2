@@ -1,0 +1,6 @@
+[package]
+name = "oath2"
+version = "0.1.0"
+authors = ["Julian Baehr <julian.baehr@googlemail.com>"]
+
+[dependencies]
