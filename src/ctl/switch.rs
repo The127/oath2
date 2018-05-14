@@ -31,12 +31,13 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                 info!("Read OfHeader: {:?}.", header);
 
                 // read input payload + log
-                let payload_bytes = read_bytes(&mut stream_in, *&header.payload_length() as usize)
-                    .expect("could not read payload bytes");
+                let payload_bytes = &read_bytes(&mut stream_in, *&header.payload_length() as usize)
+                    .expect("could not read payload bytes")[..];
                 let payload = match &header.ttype() {
                     ds::Type::Hello => ds::OfPayload::Hello,
                     ds::Type::Error => ds::OfPayload::Error,
                     ds::Type::EchoRequest => ds::OfPayload::EchoRequest,
+                    // these should be automatic later, eg.: ds::packet_in::PacketIn::try_from(payload_bytes)?.into(),
                     ds::Type::Experimenter => ds::OfPayload::Experimenter,
                     ds::Type::FeaturesReply => ds::OfPayload::FeaturesReply,
                     ds::Type::GetConfigReply => ds::OfPayload::GetConfigReply,
