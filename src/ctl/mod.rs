@@ -3,9 +3,16 @@ use std::sync::mpsc::channel;
 use std::thread;
 
 use super::err::*;
+use super::ds;
 
 pub mod switch;
 
+/// starts the controller at the given address (eg. "127.0.0.1:6653")
+/// the given handler function will not receive hellos or echo requests or similar messages
+/// these are handled automatically by the controller
+/// also the controller will create a flow in the switch that sends all 
+/// unknown messages to the controller automatically on connection setup
+/// this function does not return
 pub fn start_controller<A, F>(addr: A, handler: F) -> Result<()>
 where
     A: ToSocketAddrs,
@@ -29,8 +36,12 @@ where
             match tcp_r.recv() {
                 Ok(of_msg) => {
                     info!("Handling msg: {:?}.", of_msg.msg);
-                    //TODO: match msg type and automatically handle special types (hello, ...)
-                    handler(of_msg);
+                    // match msg type and automatically handle special types (hello, ...)
+                    match of_msg.msg.header().ttype() {
+                        ds::Type::Hello => handle_hello(of_msg),
+                        ds::Type::EchoRequest => handle_echo_request(of_msg),
+                        _ => handler(of_msg),
+                    }
                 }
                 Err(err) => panic!(err),
             }
@@ -45,10 +56,27 @@ where
             info!("Tcp connection from: {:?}.", stream.peer_addr());
             // start new connection to switch
             // give copy of tcp_s to inform handler of new messages
+            switch::start_switch_connection(stream, tcp_s.clone());
         }
     }
 
     // should never happen
     // but makes the compiler happy :)
     Ok(())
+}
+
+fn handle_hello(msg: switch::IncomingMsg){
+    let payload = ds::OfPayload::Hello;
+    let mut header = payload.generate_header();
+    header.set_xid(*msg.msg.header().xid());
+    let response = ds::OfMsg::new(header, payload);
+    msg.reply_ch.send(response).expect("could not send hello response");
+}
+
+fn handle_echo_request(msg: switch::IncomingMsg){
+    let payload = ds::OfPayload::EchoResponse;
+    let mut header = payload.generate_header();
+    header.set_xid(*msg.msg.header().xid());
+    let response = ds::OfMsg::new(header, payload);
+    msg.reply_ch.send(response).expect("could not send hello response");
 }

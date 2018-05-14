@@ -36,7 +36,7 @@ impl Into<Vec<u8>> for OfMsg {
 pub const HEADER_LENGTH: usize = 8;
 
 /// OpenFlow header struct.
-#[derive(Getters, Debug, PartialEq, Clone)]
+#[derive(Getters, Setters, Debug, PartialEq, Clone)]
 pub struct Header {
     /// OpenFlow version identifier
     #[get = "pub"]
@@ -50,7 +50,7 @@ pub struct Header {
     /// Transaction id associated with this packet.
     /// Replies use the same id as was in the request
     /// to facilitate pairing.
-    #[get = "pub"]
+    #[get = "pub"] #[set = "pub"]
     xid: u32,
 }
 
@@ -256,6 +256,59 @@ pub enum OfPayload {
     SetAsync,      //(async::Async),
 
     MeterMod, //(meter_mod::MeterMod),
+}
+
+impl OfPayload {
+    pub fn generate_header(&self) -> Header {
+        match self {
+            OfPayload::Hello => Header{
+                ttype: Type::Hello,
+                length: HEADER_LENGTH as u16,
+                version: Version::V1_3,
+                xid: 0,
+            },
+            //OfPayload::Error,
+            OfPayload::EchoRequest => Header{
+                ttype: Type::EchoRequest,
+                length: HEADER_LENGTH as u16,
+                version: Version::V1_3,
+                xid: 0,
+            },
+            OfPayload::EchoResponse => Header{
+                ttype: Type::EchoReply,
+                length: HEADER_LENGTH as u16,
+                version: Version::V1_3,
+                xid: 0,
+            },
+            //OfPayload::Experimenter,
+            //OfPayload::FeaturesRequest,
+            //OfPayload::FeaturesReply, 
+            //OfPayload::GetConfigRequest,
+            //OfPayload::GetConfigReply, 
+            //OfPayload::SetConfig,      
+            //OfPayload::PacketIn, 
+            //OfPayload::FlowRemoved,
+            //OfPayload::PortStatus,
+            //OfPayload::PacketOut, 
+            //OfPayload::FlowMod,   
+            //OfPayload::GroupMod,  
+            //OfPayload::PortMod,   
+            //OfPayload::TableMod,  
+            //OfPayload::MultipartRequest, 
+            //OfPayload::MultipartReply,   
+            //OfPayload::BarrierRequest,
+            //OfPayload::BarrierReply,
+            //OfPayload::QueueGetConfigRequest, 
+            //OfPayload::QueueGetConfigReply,  
+            //OfPayload::RoleRequest, 
+            //OfPayload::RoleReply,  
+            //OfPayload::GetAsyncRequest,
+            //OfPayload::GetAsyncReply, 
+            //OfPayload::SetAsync,     
+            //OfPayload::MeterMod, 
+            _ => panic!("not yet implemented header gen"),
+        }
+    }
 }
 
 impl Into<Vec<u8>> for OfPayload {
