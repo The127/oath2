@@ -1,13 +1,15 @@
+use std::convert::TryFrom;
 use std::io::Read;
 use std::net::TcpStream;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
+use super::super::ds;
 use super::super::err::*;
 
 pub struct IncomingMsg {
     pub reply_ch: Sender<()>,
-    pub msg: (),
+    pub msg: ds::OfMsg,
 }
 
 pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>) -> Result<()> {
@@ -19,9 +21,55 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
     thread::Builder::new()
         .name(format!("Switch-In {:?}", stream_in.peer_addr()).to_string())
         .spawn(move || {
-            // read input header + log
-            // read input payload + log
-            // send channel message (with sender channel in message)
+            let mut stream_in = stream_in;
+            loop {
+                // read input header + log
+                let header_bytes = read_bytes(&mut stream_in, ds::HEADER_LENGTH)
+                    .expect("could not read header bytes");
+                let header = ds::Header::try_from(&header_bytes[..])
+                    .expect("could not convert header bytes to actual header");
+                info!("Read OfHeader: {:?}.", header);
+
+                // read input payload + log
+                let payload_bytes = read_bytes(&mut stream_in, *&header.payload_length() as usize)
+                    .expect("could not read payload bytes");
+                let payload = match &header.ttype() {
+                    ds::Type::Hello => ds::OfPayload::Hello,
+                    ds::Type::Error => ds::OfPayload::Error,
+                    ds::Type::EchoRequest => ds::OfPayload::EchoRequest,
+                    ds::Type::Experimenter => ds::OfPayload::Experimenter,
+                    ds::Type::FeaturesReply => ds::OfPayload::FeaturesReply,
+                    ds::Type::GetConfigReply => ds::OfPayload::GetConfigReply,
+                    ds::Type::PacketIn => ds::OfPayload::PacketIn,
+                    ds::Type::FlowRemoved => ds::OfPayload::FlowRemoved,
+                    ds::Type::PortStatus => ds::OfPayload::PortStatus,
+                    ds::Type::MultipartReply => ds::OfPayload::MultipartReply,
+                    ds::Type::BarrierReply => ds::OfPayload::BarrierReply,
+                    ds::Type::QueueGetConfigReply => ds::OfPayload::QueueGetConfigReply,
+                    ds::Type::RoleReply => ds::OfPayload::RoleReply,
+                    ds::Type::GetAsyncReply => ds::OfPayload::GetAsyncReply,
+                    ttype => {
+                        error!(
+                            "received not allowed ofmsg type {:?}",
+                            header.ttype()
+                        );
+                        panic!(
+                            "received not allowed ofmsg type {:?}",
+                            header.ttype()
+                        );
+                    }
+                };
+                info!("Read Payload: {:?}.", payload);
+
+                // send channel message (with sender channel in message)
+                ctl_ch.send(IncomingMsg{
+                    reply_ch: send.clone(),
+                    msg: ds::OfMsg::new(
+                        header,
+                        payload,
+                    ),
+                }).expect("error while sending msg via channel to controller");
+            }
         })?;
 
     // start switch output thread
@@ -29,6 +77,7 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
     thread::Builder::new()
         .name(format!("Switch-In {:?}", stream_out.peer_addr()).to_string())
         .spawn(move || {
+            let mut stream_out = stream_out;
             loop {
                 // wait for a message to send from controller
                 match recv.recv() {
