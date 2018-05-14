@@ -3,7 +3,7 @@
 pub const ETHERNET_ADDRESS_LENGTH: usize = 6;
 pub type EthernetAddress = [u8; ETHERNET_ADDRESS_LENGTH];
 
-pub fn from_slice(slice: &[u8]) -> EthernetAddress{
+pub fn from_slice_eth(slice: &[u8]) -> EthernetAddress{
     let mut addr = [0u8; ETHERNET_ADDRESS_LENGTH];
     for i in 0..ETHERNET_ADDRESS_LENGTH{
         addr[i] = slice[i];
