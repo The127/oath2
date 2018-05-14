@@ -15,6 +15,15 @@ pub struct OfMsg {
     payload: OfPayload,
 }
 
+impl OfMsg {
+    pub fn new(header: Header, payload: OfPayload) -> Self {
+        OfMsg{
+            header: header,
+            payload: payload,
+        }
+    }
+}
+
 impl Into<Vec<u8>> for OfMsg {
     fn into(self) -> Vec<u8> {
         let mut vec = Into::<Vec<u8>>::into(self.header);
