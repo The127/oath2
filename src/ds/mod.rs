@@ -6,6 +6,7 @@ use std::io::Cursor;
 use super::err::*;
 
 pub mod ports;
+pub mod hw_addr;
 
 /// defines an OpenFlow message
 /// header + payload
