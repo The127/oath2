@@ -24,6 +24,13 @@ impl OfMsg {
             payload: payload,
         }
     }
+
+    pub fn generate(xid: u32, payload: OfPayload) -> Self {
+        OfMsg {
+            header: payload.generate_header(xid),
+            payload: payload,
+        }
+    }
 }
 
 impl Into<Vec<u8>> for OfMsg {
@@ -38,7 +45,7 @@ impl Into<Vec<u8>> for OfMsg {
 pub const HEADER_LENGTH: usize = 8;
 
 /// OpenFlow header struct.
-#[derive(Getters, Setters, Debug, PartialEq, Clone)]
+#[derive(Getters, Debug, PartialEq, Clone)]
 pub struct Header {
     /// OpenFlow version identifier
     #[get = "pub"]
@@ -53,7 +60,6 @@ pub struct Header {
     /// Replies use the same id as was in the request
     /// to facilitate pairing.
     #[get = "pub"]
-    #[set = "pub"]
     xid: u32,
 }
 
@@ -262,26 +268,21 @@ pub enum OfPayload {
 }
 
 impl OfPayload {
-    pub fn generate_header(&self) -> Header {
+    pub fn generate_header(&self, xid: u32) -> Header {
+        let mut header = Header{
+            version: Version::V1_3,
+            ttype: Type::Hello,
+            length: HEADER_LENGTH as u16,
+            xid: xid,
+        };
         match self {
-            OfPayload::Hello => Header {
-                ttype: Type::Hello,
-                length: HEADER_LENGTH as u16,
-                version: Version::V1_3,
-                xid: 0,
-            },
+            OfPayload::Hello => (),
             //OfPayload::Error,
-            OfPayload::EchoRequest => Header {
-                ttype: Type::EchoRequest,
-                length: HEADER_LENGTH as u16,
-                version: Version::V1_3,
-                xid: 0,
+            OfPayload::EchoRequest => {
+                header.ttype = Type::EchoRequest;
             },
-            OfPayload::EchoResponse => Header {
-                ttype: Type::EchoReply,
-                length: HEADER_LENGTH as u16,
-                version: Version::V1_3,
-                xid: 0,
+            OfPayload::EchoResponse => {
+                header.ttype = Type::EchoReply;
             },
             //OfPayload::Experimenter,
             //OfPayload::FeaturesRequest,
@@ -311,6 +312,7 @@ impl OfPayload {
             //OfPayload::MeterMod,
             _ => panic!("not yet implemented header gen {:?}", self),
         }
+        header
     }
 }
 

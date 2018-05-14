@@ -66,20 +66,14 @@ where
 }
 
 fn handle_hello(msg: switch::IncomingMsg) {
-    let payload = ds::OfPayload::Hello;
-    let mut header = payload.generate_header();
-    header.set_xid(*msg.msg.header().xid());
-    let response = ds::OfMsg::new(header, payload);
+    let response = ds::OfMsg::generate(*msg.msg.header().xid(), ds::OfPayload::Hello);
     msg.reply_ch
         .send(response)
         .expect("could not send hello response");
 }
 
 fn handle_echo_request(msg: switch::IncomingMsg) {
-    let payload = ds::OfPayload::EchoResponse;
-    let mut header = payload.generate_header();
-    header.set_xid(*msg.msg.header().xid());
-    let response = ds::OfMsg::new(header, payload);
+    let response = ds::OfMsg::generate(*msg.msg.header().xid(), ds::OfPayload::EchoResponse);
     msg.reply_ch
         .send(response)
         .expect("could not send hello response");
