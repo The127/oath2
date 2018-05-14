@@ -12,7 +12,15 @@ pub struct OfMsg {
     #[get = "pub"]
     header: Header,
     #[get = "pub"]
-    payload: (),
+    payload: OfPayload,
+}
+
+impl Into<Vec<u8>> for OfMsg{
+    fn into(self) -> Vec<u8> {
+        let mut vec = Into::<Vec<u8>>::into(self.header);
+        vec.extend_from_slice(&Into::<Vec<u8>>::into(self.payload)[..]);
+        vec
+    }
 }
 
 /// OpenFlow message header length is 8 bytes.
@@ -196,4 +204,59 @@ pub enum Type {
     /* Meters and rate limiters configuration messages. */
     /// Controller/switch message
     MeterMod = 29,
+}
+
+#[derive(Debug)]
+pub enum OfPayload {
+    Hello, 
+    Error, 
+    EchoRequest,
+    EchoResponse,
+    Experimenter,
+
+    FeaturesRequest, 
+    FeaturesReply, //(features::SwitchFeatures), 
+    GetConfigRequest, 
+    GetConfigReply, //(switch_config::SwitchConfig), 
+    SetConfig, //(switch_config::SwitchConfig), 
+
+    PacketIn, //(packet_in::PacketIn), 
+    FlowRemoved, 
+    PortStatus, 
+
+    PacketOut, //(packet_out::PacketOut),
+    FlowMod, //(flow_mod::FlowMod), 
+    GroupMod, //(group_mod::GroupMod),
+    PortMod, //(port_mod::PortMod), 
+    TableMod, //(table_mod::TableMod), 
+
+    MultipartRequest, //(multipart::MultipartRequest), 
+    MultipartReply, //(multipart::MultipartReply), 
+
+    BarrierRequest, 
+    BarrierReply, 
+
+    QueueGetConfigRequest, //(queue_config::QueueGetConfigRequest), 
+    QueueGetConfigReply, //(queue_config::QueueGetConfigReply), 
+
+    RoleRequest, //(role::Role), 
+    RoleReply, //(role::Role), 
+
+    GetAsyncRequest, 
+    GetAsyncReply, //(async::Async), 
+    SetAsync, //(async::Async), 
+
+    MeterMod, //(meter_mod::MeterMod), 
+}
+
+impl Into<Vec<u8>> for OfPayload{
+    fn into(self) -> Vec<u8> {
+        match self {
+            OfPayload::Hello => vec![], // no body
+            OfPayload::EchoRequest => vec![], // no body
+            OfPayload::EchoResponse => vec![], // no body
+            //OfPayload::PacketOut(payload) => payload.into(),
+            _ => panic!("not yet implemented"),
+        }
+    }
 }
