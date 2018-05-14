@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use std::io::Read;
+use ::std::io::{Read, Write};
 use std::net::TcpStream;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
@@ -8,13 +8,13 @@ use super::super::ds;
 use super::super::err::*;
 
 pub struct IncomingMsg {
-    pub reply_ch: Sender<()>,
+    pub reply_ch: Sender<ds::OfMsg>,
     pub msg: ds::OfMsg,
 }
 
 pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>) -> Result<()> {
     let stream_out = stream_in.try_clone()?;
-    let (send, recv) = channel::<()>();
+    let (send, recv) = channel::<ds::OfMsg>();
 
     // start switch input thread
     info!("Starting input thread for: {:?}.", stream_in.peer_addr());
@@ -84,6 +84,8 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                     Ok(of_msg) => {
                         // send message to switch
                         info!("Sending {:?} to: {:?}.", of_msg, stream_out.peer_addr());
+                        let write_slice = &Into::<Vec<u8>>::into(of_msg)[..];
+                        stream_out.write_all(write_slice).expect("could not write bytes to stream");
                     }
                     Err(err) => panic!(err),
                 }
