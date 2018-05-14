@@ -41,7 +41,7 @@ pub struct Header {
 impl Header {
     /// returns the length of the payload  inbytes
     /// equivalent to the length in the header - HEADER_LENGTH
-    pub fn payload_length(self) -> u16 {
+    pub fn payload_length(&self) -> u16 {
         // self.length is length of whole message including header length
         // therefore subtract the constant length of an OpenFlow header
         // to get the payload length in bytes
