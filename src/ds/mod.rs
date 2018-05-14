@@ -1,4 +1,9 @@
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use num_traits::{FromPrimitive, ToPrimitive};
+use std::convert::{Into, TryFrom};
+use std::io::Cursor;
 
+use super::err::*;
 
 /// defines an OpenFlow message
 /// header + payload
@@ -32,6 +37,67 @@ pub struct Header {
     xid: u32,
 }
 
+/// Implementation of OpenFlow header struct
+impl Header {
+    /// returns the length of the payload  inbytes
+    /// equivalent to the length in the header - HEADER_LENGTH
+    pub fn payload_length(self) -> u16 {
+        // self.length is length of whole message including header length
+        // therefore subtract the constant length of an OpenFlow header
+        // to get the payload length in bytes
+        self.length - (HEADER_LENGTH as u16)
+    }
+}
+
+impl<'a> TryFrom<&'a [u8]> for Header {
+    type Error = Error;
+    fn try_from(bytes: &'a [u8]) -> Result<Self> {
+        // check if bytes have correct length
+        if bytes.len() != HEADER_LENGTH {
+            return Err(ErrorKind::InvalidSliceLength(
+                HEADER_LENGTH,
+                bytes.len(),
+                stringify!(Header),
+            ).into());
+        }
+        let mut cursor = Cursor::new(bytes);
+        // read raw version val
+        let version_raw = cursor.read_u8().unwrap();
+        // try to decode it
+        let version = match Version::from_u8(version_raw) {
+            Some(version) => version,
+            None => {
+                return Err(ErrorKind::UnknownValue(version_raw as u64, stringify!(Version)).into())
+            }
+        };
+        // read type version val
+        let ttype_raw = cursor.read_u8().unwrap();
+        // try to decode it
+        let ttype = match Type::from_u8(ttype_raw) {
+            Some(ttype) => ttype,
+            None => return Err(ErrorKind::UnknownValue(ttype_raw as u64, stringify!(Type)).into()),
+        };
+        // build result
+        Ok(Header {
+            version: version,
+            ttype: ttype,
+            length: cursor.read_u16::<BigEndian>().unwrap(),
+            xid: cursor.read_u32::<BigEndian>().unwrap(),
+        })
+    }
+}
+
+impl Into<Vec<u8>> for Header {
+    fn into(self) -> Vec<u8> {
+        let mut res = Vec::new();
+        res.write_u8(self.version.to_u8().unwrap()).unwrap();
+        res.write_u8(self.ttype.to_u8().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.length).unwrap();
+        res.write_u32::<BigEndian>(self.xid).unwrap();
+        res
+    }
+}
+
 /// OpenFlow Version enum.
 #[derive(Primitive, PartialEq, Debug, Clone)]
 pub enum Version {
@@ -51,83 +117,83 @@ pub enum Version {
 #[derive(Primitive, PartialEq, Debug, Clone)]
 pub enum Type {
     /* Immutable messages. */
-    /// Hello message sent by switch and controller 
+    /// Hello message sent by switch and controller
     /// directly after establishing a connection.
     /// Symmetric message.
-    Hello = 0, 
-    /// Symmetric message 
-    Error = 1, 
-    /// Symmetric message 
-    EchoRequest = 2, 
-    /// Symmetric message 
-    EchoReply = 3, 
-    /// Symmetric message 
+    Hello = 0,
+    /// Symmetric message
+    Error = 1,
+    /// Symmetric message
+    EchoRequest = 2,
+    /// Symmetric message
+    EchoReply = 3,
+    /// Symmetric message
     Experimenter = 4,
 
     /* Switch configuration messages. */
-    /// Controller/switch message 
-    FeaturesRequest = 5, 
-    /// Controller/switch message 
-    FeaturesReply = 6, 
-    /// Controller/switch message 
-    GetConfigRequest = 7, 
-    /// Controller/switch message 
-    GetConfigReply = 8, 
-    /// Controller/switch message 
-    SetConfig = 9, 
+    /// Controller/switch message
+    FeaturesRequest = 5,
+    /// Controller/switch message
+    FeaturesReply = 6,
+    /// Controller/switch message
+    GetConfigRequest = 7,
+    /// Controller/switch message
+    GetConfigReply = 8,
+    /// Controller/switch message
+    SetConfig = 9,
 
     /* Asynchronous messages. */
-    /// Async message 
-    PacketIn = 10, 
-    /// Async message 
-    FlowRemoved = 11, 
-    /// Async message 
-    PortStatus = 12, 
+    /// Async message
+    PacketIn = 10,
+    /// Async message
+    FlowRemoved = 11,
+    /// Async message
+    PortStatus = 12,
 
     /* Controller command messages. */
-    /// Controller/switch message 
+    /// Controller/switch message
     PacketOut = 13,
-    /// Controller/switch message 
-    FlowMod = 14, 
-    /// Controller/switch message 
+    /// Controller/switch message
+    FlowMod = 14,
+    /// Controller/switch message
     GroupMod = 15,
     /// Controller/switch message  
-    PortMod = 16, 
-    /// Controller/switch message 
-    TableMod = 17, 
+    PortMod = 16,
+    /// Controller/switch message
+    TableMod = 17,
 
     /* Multipart messages. */
-    /// Controller/switch message 
-    MultipartRequest = 18, 
-    /// Controller/switch message 
-    MultipartReply = 19, 
+    /// Controller/switch message
+    MultipartRequest = 18,
+    /// Controller/switch message
+    MultipartReply = 19,
 
     /* Barrier messages. */
-    /// Controller/switch message 
-    BarrierRequest = 20, 
-    /// Controller/switch message 
-    BarrierReply = 21, 
+    /// Controller/switch message
+    BarrierRequest = 20,
+    /// Controller/switch message
+    BarrierReply = 21,
 
     /* Queue Configuration messages. */
-    /// Controller/switch message 
-    QueueGetConfigRequest = 22, 
-    /// Controller/switch message 
-    QueueGetConfigReply = 23, 
+    /// Controller/switch message
+    QueueGetConfigRequest = 22,
+    /// Controller/switch message
+    QueueGetConfigReply = 23,
     /* Controller role change request messages. */
-    /// Controller/switch message 
-    RoleRequest = 24, 
-    /// Controller/switch message 
-    RoleReply = 25, 
+    /// Controller/switch message
+    RoleRequest = 24,
+    /// Controller/switch message
+    RoleReply = 25,
 
     /* Asynchronous message configuration.  */
-    /// Controller/switch message 
-    GetAsyncRequest = 26, 
-    /// Controller/switch message 
-    GetAsyncReply = 27, 
-    /// Controller/switch message 
-    SetAsync = 28, 
+    /// Controller/switch message
+    GetAsyncRequest = 26,
+    /// Controller/switch message
+    GetAsyncReply = 27,
+    /// Controller/switch message
+    SetAsync = 28,
 
     /* Meters and rate limiters configuration messages. */
-    /// Controller/switch message 
-    MeterMod = 29, 
+    /// Controller/switch message
+    MeterMod = 29,
 }
