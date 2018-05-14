@@ -14,18 +14,22 @@ pub struct OfMsg {
 pub const HEADER_LENGTH: usize = 8;
 
 /// OpenFlow header struct.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Getters, Debug, PartialEq, Clone)]
 pub struct Header {
     /// OpenFlow version identifier
-    pub version: Version,
+    #[get = "pub"]
+    version: Version,
     /// OpenFlow message  type
-    pub ttype: Type,
+    #[get = "pub"]
+    ttype: Type,
     /// length of message including this header
-    pub length: u16,
+    #[get = "pub"]
+    length: u16,
     /// Transaction id associated with this packet.
     /// Replies use the same id as was in the request
     /// to facilitate pairing.
-    pub xid: u32,
+    #[get = "pub"]
+    xid: u32,
 }
 
 /// OpenFlow Version enum.
