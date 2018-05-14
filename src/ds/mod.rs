@@ -310,7 +310,7 @@ impl OfPayload {
             //OfPayload::GetAsyncReply,
             //OfPayload::SetAsync,
             //OfPayload::MeterMod,
-            _ => panic!("not yet implemented header gen"),
+            _ => panic!("not yet implemented header gen {:?}", self),
         }
     }
 }
@@ -322,7 +322,7 @@ impl Into<Vec<u8>> for OfPayload {
             OfPayload::EchoRequest => vec![],  // no body
             OfPayload::EchoResponse => vec![], // no body
             //OfPayload::PacketOut(payload) => payload.into(),
-            _ => panic!("not yet implemented"),
+            _ => panic!("not yet implemented {:?}", self),
         }
     }
 }
