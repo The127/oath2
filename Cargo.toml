@@ -6,3 +6,4 @@ authors = ["Julian Baehr <julian.baehr@googlemail.com>"]
 [dependencies]
 error-chain = "*"
 log = "*"
+getset = "*"
