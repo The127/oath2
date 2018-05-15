@@ -7,6 +7,8 @@ use std::convert::{TryFrom, Into};
 use std::ffi::CString;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use num_traits::{FromPrimitive, ToPrimitive};
+use std::io::{SeekFrom, Seek, Cursor, Write};
+use std::path;
 
 /// OpenFlow port struct length is 64 bytes.
 pub const PORT_LENGTH: usize = 64;
@@ -39,6 +41,137 @@ pub struct Port {
     curr_speed: u32,
     /// Max port bitrate in kbps.
     max_speed: u32,
+}
+
+impl<'a> TryFrom<&'a [u8]> for Port {
+    type Error = Error;
+    fn try_from(bytes: &'a [u8]) -> Result<Self> {
+        // check if bytes have correct length
+        if bytes.len() != PORT_LENGTH {
+            bail!(ErrorKind::InvalidSliceLength(
+                PORT_LENGTH,
+                bytes.len(),
+                stringify!(Port),
+            ));
+        }
+        let mut cursor = Cursor::new(bytes);
+
+        // read raw version val
+        let port_no = cursor.read_u32::<BigEndian>().unwrap();
+        // try to decode it
+        let port_no = PortNumber::try_from(port_no)?;
+
+        //works because big endian format
+        let hw_addr_slice = &bytes[8..14];
+
+        //works because big endian format
+        let name_slice = &bytes[16..32];
+        let name = unsafe {
+            CString::from_vec_unchecked(Vec::from(name_slice))
+        };
+
+        //put cursor to correct position after string (32 bytes)
+        cursor.seek(SeekFrom::Start(32)).unwrap();
+
+        let config = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read port config!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
+        let config = PortConfig::from_bits(config)
+            .ok_or::<Error>(ErrorKind::UnknownValue(config as u64, stringify!(PortConfig)).into())?;
+
+        let state = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read port state!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
+        let state = PortState::from_bits(state)
+            .ok_or::<Error>(ErrorKind::UnknownValue(state as u64, stringify!(PortState)).into())?;
+
+        let curr = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read port curr!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
+        let curr = PortFeatures::from_bits(curr)
+            .ok_or::<Error>(ErrorKind::UnknownValue(curr as u64, stringify!(PortFeatures)).into())?;
+
+        let advertised = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read port advertised!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
+        let advertised = PortFeatures::from_bits(advertised)
+            .ok_or::<Error>(ErrorKind::UnknownValue(advertised as u64, stringify!(PortFeatures)).into())?;
+
+        let supported = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read port supported!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
+        let supported = PortFeatures::from_bits(supported)
+            .ok_or::<Error>(ErrorKind::UnknownValue(supported as u64, stringify!(PortFeatures)).into())?;
+
+        let peer = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read port peer!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
+        let peer = PortFeatures::from_bits(peer)
+            .ok_or::<Error>(ErrorKind::UnknownValue(peer as u64, stringify!(PortFeatures)).into())?;
+
+        Ok(Port{
+            port_no: port_no,
+            hw_addr: hw_addr::from_slice_eth(hw_addr_slice)?,
+            name: name,
+            config: config,
+            state: state,
+            curr: curr,
+            advertised: advertised,
+            supported: supported,
+            peer: peer,
+            curr_speed: cursor.read_u32::<BigEndian>().chain_err(|| {
+                let err_msg = format!("Could not read port curr_speed!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                error!("{}", err_msg);
+                err_msg
+            })?,
+            max_speed: cursor.read_u32::<BigEndian>().chain_err(|| {
+                let err_msg = format!("Could not read port max_speed!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                error!("{}", err_msg);
+                err_msg
+            })?,
+        })
+    }
+}
+
+impl Into<Vec<u8>> for Port {
+    fn into(self) -> Vec<u8> {
+        let mut res = Vec::new();
+        res.write_u32::<BigEndian>(self.port_no.into()).unwrap();
+        // pad 4 bytes 
+        res.write_u32::<BigEndian>(0).unwrap();
+        res.extend_from_slice(&self.hw_addr[..]);
+        // pad 2 bytes
+        res.write_u16::<BigEndian>(0).unwrap();
+        // dont check validity of CString (length) here
+        // instead do so in the creation method (if one exists)
+        let mut bytes_written = res.write(&self.name.into_bytes()[..]).unwrap();
+        //pad with 0 bytes until 16 bytes are written
+        while bytes_written < 16 {
+            res.write_u8(0u8).unwrap();
+            bytes_written += 1;
+        }
+        res.write_u32::<BigEndian>(self.config.bits()).unwrap();
+        res.write_u32::<BigEndian>(self.state.bits()).unwrap();
+        res.write_u32::<BigEndian>(self.curr.bits()).unwrap();
+        res.write_u32::<BigEndian>(self.advertised.bits()).unwrap();
+        res.write_u32::<BigEndian>(self.supported.bits()).unwrap();
+        res.write_u32::<BigEndian>(self.peer.bits()).unwrap();
+        res.write_u32::<BigEndian>(self.curr_speed).unwrap();
+        res.write_u32::<BigEndian>(self.max_speed).unwrap();
+        res
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
