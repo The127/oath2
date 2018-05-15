@@ -34,35 +34,63 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                 let payload_bytes = &read_bytes(&mut stream_in, *&header.payload_length() as usize)
                     .expect("could not read payload bytes")[..];
                 let payload = match &header.ttype() {
-                    ds::Type::Hello => ds::OfPayload::Hello,
-                    ds::Type::Error => ds::OfPayload::Error,
-                    ds::Type::EchoRequest => ds::OfPayload::EchoRequest,
+                    ds::Type::Hello => 
+                        Some(ds::OfPayload::Hello),
+                    ds::Type::Error => 
+                        Some(ds::OfPayload::Error),
+                    ds::Type::EchoRequest => 
+                        Some(ds::OfPayload::EchoRequest),
                     // these should be automatic later, eg.: ds::packet_in::PacketIn::try_from(payload_bytes)?.into(),
-                    ds::Type::Experimenter => ds::OfPayload::Experimenter,
-                    ds::Type::FeaturesReply => ds::OfPayload::FeaturesReply,
-                    ds::Type::GetConfigReply => ds::OfPayload::GetConfigReply,
-                    ds::Type::PacketIn => ds::OfPayload::PacketIn,
-                    ds::Type::FlowRemoved => ds::OfPayload::FlowRemoved,
-                    ds::Type::PortStatus => ds::OfPayload::PortStatus,
-                    ds::Type::MultipartReply => ds::OfPayload::MultipartReply,
-                    ds::Type::BarrierReply => ds::OfPayload::BarrierReply,
-                    ds::Type::QueueGetConfigReply => ds::OfPayload::QueueGetConfigReply,
-                    ds::Type::RoleReply => ds::OfPayload::RoleReply,
-                    ds::Type::GetAsyncReply => ds::OfPayload::GetAsyncReply,
+                    ds::Type::Experimenter => {
+                        error!("No experimenter support (yet?)");
+                        None
+                    },
+                    ds::Type::FeaturesReply => 
+                        Some(ds::OfPayload::FeaturesReply(ds::features::SwitchFeatures::try_from(&payload_bytes[..]).expect("error while try_from SwitchFeatures"))),
+                    ds::Type::GetConfigReply => 
+                        Some(ds::OfPayload::GetConfigReply(ds::switch_config::SwitchConfig::try_from(&payload_bytes[..]).expect("error while try_from SwitchConfig"))),
+                    ds::Type::PacketIn => 
+                        Some(ds::OfPayload::PacketIn(ds::packet_in::PacketIn::try_from(&payload_bytes[..]).expect("error while try_from PacketIn"))),
+                    ds::Type::FlowRemoved => {
+                        error!("No FlowRemoved support (yet?)");
+                        None
+                    },
+                    ds::Type::PortStatus => {
+                        error!("No PortStatus support (yet?)");
+                        None
+                    },
+                    ds::Type::MultipartReply => {
+                        error!("No MultipartReply support (yet?)");
+                        None
+                    },
+                    ds::Type::BarrierReply => 
+                        Some(ds::OfPayload::BarrierReply),
+                    ds::Type::QueueGetConfigReply => 
+                        Some(ds::OfPayload::QueueGetConfigReply(ds::queue_config::QueueGetConfigReply::try_from(&payload_bytes[..]).expect("error while try_from QueueGetConfigReply"))),
+                    ds::Type::RoleReply => 
+                        Some(ds::OfPayload::RoleReply(ds::role::Role::try_from(&payload_bytes[..]).expect("error while try_from Role"))),
+                    ds::Type::GetAsyncReply => 
+                        Some(ds::OfPayload::GetAsyncReply(ds::async::Async::try_from(&payload_bytes[..]).expect("error while try_from Async"))),
                     ttype => {
                         error!("received not allowed ofmsg type {:?}", header.ttype());
-                        panic!("received not allowed ofmsg type {:?}", header.ttype());
+                        None
                     }
                 };
                 info!("Read Payload: {:?}.", payload);
-
-                // send channel message (with sender channel in message)
-                ctl_ch
-                    .send(IncomingMsg {
-                        reply_ch: send.clone(),
-                        msg: ds::OfMsg::new(header, payload),
-                    })
-                    .expect("error while sending msg via channel to controller");
+                
+                // if the payload is supported
+                match payload {
+                    Some(payload) => {
+                        // send channel message (with sender channel in message)
+                        ctl_ch
+                            .send(IncomingMsg {
+                                reply_ch: send.clone(),
+                                msg: ds::OfMsg::new(header, payload),
+                            })
+                            .expect("error while sending msg via channel to controller");
+                    },
+                    _ => (),
+                }
             }
         })?;
 

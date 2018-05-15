@@ -271,45 +271,45 @@ pub enum Type {
 
 #[derive(Debug)]
 pub enum OfPayload {
-    Hello,
-    Error,
+    Hello, 
+    Error, 
     EchoRequest,
     EchoReply,
     Experimenter,
 
-    FeaturesRequest,
-    FeaturesReply, //(features::SwitchFeatures),
-    GetConfigRequest,
-    GetConfigReply, //(switch_config::SwitchConfig),
-    SetConfig,      //(switch_config::SwitchConfig),
+    FeaturesRequest, 
+    FeaturesReply(features::SwitchFeatures), 
+    GetConfigRequest, 
+    GetConfigReply(switch_config::SwitchConfig), 
+    SetConfig(switch_config::SwitchConfig), 
 
-    PacketIn, //(packet_in::PacketIn),
-    FlowRemoved,
-    PortStatus,
+    PacketIn(packet_in::PacketIn), 
+    FlowRemoved, 
+    PortStatus, 
 
-    PacketOut, //(packet_out::PacketOut),
-    FlowMod,   //(flow_mod::FlowMod),
-    GroupMod,  //(group_mod::GroupMod),
-    PortMod,   //(port_mod::PortMod),
-    TableMod,  //(table_mod::TableMod),
+    PacketOut(packet_out::PacketOut),
+    FlowMod(flow_mod::FlowMod), 
+    GroupMod(group_mod::GroupMod),
+    PortMod(port_mod::PortMod), 
+    TableMod(table_mod::TableMod), 
 
-    MultipartRequest, //(multipart::MultipartRequest),
-    MultipartReply,   //(multipart::MultipartReply),
+    MultipartRequest(multipart::MultipartRequest), 
+    MultipartReply(multipart::MultipartReply), 
 
-    BarrierRequest,
-    BarrierReply,
+    BarrierRequest, 
+    BarrierReply, 
 
-    QueueGetConfigRequest, //(queue_config::QueueGetConfigRequest),
-    QueueGetConfigReply,   //(queue_config::QueueGetConfigReply),
+    QueueGetConfigRequest(queue_config::QueueGetConfigRequest), 
+    QueueGetConfigReply(queue_config::QueueGetConfigReply), 
 
-    RoleRequest, //(role::Role),
-    RoleReply,   //(role::Role),
+    RoleRequest(role::Role), 
+    RoleReply(role::Role), 
 
-    GetAsyncRequest,
-    GetAsyncReply, //(async::Async),
-    SetAsync,      //(async::Async),
+    GetAsyncRequest, 
+    GetAsyncReply(async::Async), 
+    SetAsync(async::Async), 
 
-    MeterMod, //(meter_mod::MeterMod),
+    MeterMod(meter_mod::MeterMod), 
 }
 
 impl OfPayload {
@@ -331,85 +331,7 @@ impl OfPayload {
             OfPayload::EchoReply => {
                 header.ttype = Type::EchoReply;
             }
-            OfPayload::Experimenter => {
-                header.ttype = Type::Experimenter;
-            }
-            OfPayload::FeaturesRequest => {
-                header.ttype = Type::FeaturesRequest;
-            }
-            OfPayload::FeaturesReply => {
-                header.ttype = Type::FeaturesReply;
-            }
-            OfPayload::GetConfigRequest => {
-                header.ttype = Type::GetConfigRequest;
-            }
-            OfPayload::GetConfigReply => {
-                header.ttype = Type::GetConfigRequest;
-            }
-            OfPayload::SetConfig => {
-                header.ttype = Type::SetConfig;
-            }
-            OfPayload::PacketIn => {
-                header.ttype = Type::PacketIn;
-            }
-            OfPayload::FlowRemoved => {
-                header.ttype = Type::FlowRemoved;
-            }
-            OfPayload::PortStatus => {
-                header.ttype = Type::PortStatus;
-            }
-            OfPayload::PacketOut => {
-                header.ttype = Type::PacketOut;
-            }
-            OfPayload::FlowMod => {
-                header.ttype = Type::FlowMod;
-            }
-            OfPayload::GroupMod => {
-                header.ttype = Type::GroupMod;
-            }
-            OfPayload::PortMod => {
-                header.ttype = Type::PortMod;
-            }
-            OfPayload::TableMod => {
-                header.ttype = Type::TableMod;
-            }
-            OfPayload::MultipartRequest => {
-                header.ttype = Type::MultipartRequest;
-            }
-            OfPayload::MultipartReply => {
-                header.ttype = Type::MultipartReply;
-            }
-            OfPayload::BarrierRequest => {
-                header.ttype = Type::BarrierRequest;
-            }
-            OfPayload::BarrierReply => {
-                header.ttype = Type::BarrierReply;
-            }
-            OfPayload::QueueGetConfigRequest => {
-                header.ttype = Type::QueueGetConfigRequest;
-            }
-            OfPayload::QueueGetConfigReply => {
-                header.ttype = Type::QueueGetConfigReply;
-            }
-            OfPayload::RoleRequest => {
-                header.ttype = Type::RoleRequest;
-            }
-            OfPayload::RoleReply => {
-                header.ttype = Type::RoleReply;
-            }
-            OfPayload::GetAsyncRequest => {
-                header.ttype = Type::GetAsyncRequest;
-            }
-            OfPayload::GetAsyncReply => {
-                header.ttype = Type::GetAsyncReply;
-            }
-            OfPayload::SetAsync => {
-                header.ttype = Type::SetAsync;
-            }
-            OfPayload::MeterMod => {
-                header.ttype = Type::MeterMod;
-            }
-            _ => panic!("not yet implemented header gen {:?}", self),
+            _ => panic!("illegal or not implemented header gen for {:?}", self),
         }
         header
     }
