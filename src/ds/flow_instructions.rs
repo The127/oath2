@@ -6,6 +6,7 @@ use num_traits::{FromPrimitive, ToPrimitive};
 use std::convert::{TryFrom, Into};
 use std::io::{SeekFrom, Seek, Cursor};
 
+use super::actions;
 use std::path;
 
 #[derive(Primitive, Debug, PartialEq, Clone)]
@@ -210,14 +211,26 @@ impl Into<Vec<u8>> for PayloadWriteMetaData {
 #[derive(Debug, PartialEq, Clone)]
 pub struct PayloadWriteActions {
     // pad 4 bytes
-    actions: Vec<()>,
+    actions: Vec<actions::ActionHeader>,
 }
 
 impl<'a> TryFrom<&'a [u8]> for PayloadWriteActions {
     type Error = Error ;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        //TODO
-        unimplemented!()
+        let mut cursor = Cursor::new(bytes);
+        let mut actions = Vec::new();
+        let mut bytes_remaining = bytes.len();
+        while bytes_remaining > 0 {
+            let action_len = actions::ActionHeader::read_len(&mut cursor)?;
+            let action_slice = &bytes[cursor.position() as usize..cursor.position() as usize + action_len];
+            let action = actions::ActionHeader::try_from(action_slice)?;
+            cursor.seek(SeekFrom::Current(action_len as i64)).unwrap();
+            bytes_remaining -= action_len;
+            actions.push(action);
+        }
+        Ok(PayloadWriteActions{
+            actions: actions,
+        })
     }
 }
 
@@ -226,8 +239,7 @@ impl Into<Vec<u8>> for PayloadWriteActions {
         let mut res = Vec::new();
         res.write_u32::<BigEndian>(0).unwrap(); // pad 4 bytes
         for action in self.actions {
-            //TODO
-            unimplemented!()
+            res.extend_from_slice(&Into::<Vec<u8>>::into(action)[..]);
         }
         res
     }
@@ -236,13 +248,25 @@ impl Into<Vec<u8>> for PayloadWriteActions {
 #[derive(Debug, PartialEq, Clone)]
 pub struct PayloadApplyActions {
     // pad 4 bytes
-    actions: Vec<()>,
+    actions: Vec<actions::ActionHeader>,
 }
 impl<'a> TryFrom<&'a [u8]> for PayloadApplyActions {
     type Error = Error ;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        //TODO
-        unimplemented!()
+        let mut cursor = Cursor::new(bytes);
+        let mut actions = Vec::new();
+        let mut bytes_remaining = bytes.len();
+        while bytes_remaining > 0 {
+            let action_len = actions::ActionHeader::read_len(&mut cursor)?;
+            let action_slice = &bytes[cursor.position() as usize..cursor.position() as usize + action_len];
+            let action = actions::ActionHeader::try_from(action_slice)?;
+            cursor.seek(SeekFrom::Current(action_len as i64)).unwrap();
+            bytes_remaining -= action_len;
+            actions.push(action);
+        }
+        Ok(PayloadApplyActions{
+            actions: actions,
+        })
     }
 }
 
@@ -251,8 +275,7 @@ impl Into<Vec<u8>> for PayloadApplyActions {
         let mut res = Vec::new();
         res.write_u32::<BigEndian>(0).unwrap(); // pad 4 bytes
         for action in self.actions {
-            //TODO
-            unimplemented!()
+            res.extend_from_slice(&Into::<Vec<u8>>::into(action)[..]);
         }
         res
     }
