@@ -8,6 +8,7 @@ use super::err::*;
 
 pub mod hw_addr;
 pub mod ports;
+pub mod packet_queue;
 
 /// defines an OpenFlow message
 /// header + payload
