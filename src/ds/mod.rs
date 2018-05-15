@@ -6,25 +6,25 @@ use std::io::Cursor;
 use super::err::*;
 use std::path;
 
-pub mod flow_match;
-pub mod hw_addr;
-pub mod packet_queue;
-pub mod ports;
-pub mod flow_instructions;
 pub mod actions;
+pub mod async;
 pub mod features;
-pub mod switch_config;
-pub mod table_mod;
+pub mod flow_instructions;
+pub mod flow_match;
 pub mod flow_mod;
 pub mod group_mod;
-pub mod port_mod;
+pub mod hw_addr;
 pub mod meter_mod;
 pub mod multipart;
-pub mod queue_config;
-pub mod packet_out;
-pub mod role;
-pub mod async;
 pub mod packet_in;
+pub mod packet_out;
+pub mod packet_queue;
+pub mod port_mod;
+pub mod ports;
+pub mod queue_config;
+pub mod role;
+pub mod switch_config;
+pub mod table_mod;
 
 /// defines an OpenFlow message
 /// header + payload
@@ -271,45 +271,45 @@ pub enum Type {
 
 #[derive(Debug)]
 pub enum OfPayload {
-    Hello, 
-    Error, 
+    Hello,
+    Error,
     EchoRequest,
     EchoReply,
     Experimenter,
 
-    FeaturesRequest, 
-    FeaturesReply(features::SwitchFeatures), 
-    GetConfigRequest, 
-    GetConfigReply(switch_config::SwitchConfig), 
-    SetConfig(switch_config::SwitchConfig), 
+    FeaturesRequest,
+    FeaturesReply(features::SwitchFeatures),
+    GetConfigRequest,
+    GetConfigReply(switch_config::SwitchConfig),
+    SetConfig(switch_config::SwitchConfig),
 
-    PacketIn(packet_in::PacketIn), 
-    FlowRemoved, 
-    PortStatus, 
+    PacketIn(packet_in::PacketIn),
+    FlowRemoved,
+    PortStatus,
 
     PacketOut(packet_out::PacketOut),
-    FlowMod(flow_mod::FlowMod), 
+    FlowMod(flow_mod::FlowMod),
     GroupMod(group_mod::GroupMod),
-    PortMod(port_mod::PortMod), 
-    TableMod(table_mod::TableMod), 
+    PortMod(port_mod::PortMod),
+    TableMod(table_mod::TableMod),
 
-    MultipartRequest(multipart::MultipartRequest), 
-    MultipartReply(multipart::MultipartReply), 
+    MultipartRequest(multipart::MultipartRequest),
+    MultipartReply(multipart::MultipartReply),
 
-    BarrierRequest, 
-    BarrierReply, 
+    BarrierRequest,
+    BarrierReply,
 
-    QueueGetConfigRequest(queue_config::QueueGetConfigRequest), 
-    QueueGetConfigReply(queue_config::QueueGetConfigReply), 
+    QueueGetConfigRequest(queue_config::QueueGetConfigRequest),
+    QueueGetConfigReply(queue_config::QueueGetConfigReply),
 
-    RoleRequest(role::Role), 
-    RoleReply(role::Role), 
+    RoleRequest(role::Role),
+    RoleReply(role::Role),
 
-    GetAsyncRequest, 
-    GetAsyncReply(async::Async), 
-    SetAsync(async::Async), 
+    GetAsyncRequest,
+    GetAsyncReply(async::Async),
+    SetAsync(async::Async),
 
-    MeterMod(meter_mod::MeterMod), 
+    MeterMod(meter_mod::MeterMod),
 }
 
 impl OfPayload {
@@ -331,6 +331,11 @@ impl OfPayload {
             OfPayload::EchoReply => {
                 header.ttype = Type::EchoReply;
             }
+            OfPayload::PacketOut(payload) => {
+                header.ttype = Type::PacketOut;
+                header.length += packet_out::PACKET_OUT_LEN as u16 + payload.actions_len as u16
+                    + payload.data.len() as u16;
+            }
             _ => panic!("illegal or not implemented header gen for {:?}", self),
         }
         header
@@ -343,7 +348,7 @@ impl Into<Vec<u8>> for OfPayload {
             OfPayload::Hello => vec![],       // no body
             OfPayload::EchoRequest => vec![], // no body
             OfPayload::EchoReply => vec![],   // no body
-            //OfPayload::PacketOut(payload) => payload.into(),
+            OfPayload::PacketOut(payload) => payload.into(),
             _ => panic!("not yet implemented {:?}", self),
         }
     }

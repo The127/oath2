@@ -1,10 +1,10 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use num_traits::{FromPrimitive, ToPrimitive};
-use std::convert::{TryFrom, Into};
-use std::io::{SeekFrom, Seek, Cursor};
+use std::convert::{Into, TryFrom};
+use std::io::{Cursor, Seek, SeekFrom};
 
-use super::flow_match::*;
 use super::super::err::*;
+use super::flow_match::*;
 use super::ports::PortNumber;
 
 use std::path;
@@ -12,37 +12,37 @@ use std::path;
 #[derive(Primitive, Debug, PartialEq, Clone)]
 pub enum ActionType {
     /// Output to switch port.
-    Output = 0, 
+    Output = 0,
     /// Copy TTL "outwards" -- from next-to-outermost to outermost
-    CopyTtlOut = 11, 
+    CopyTtlOut = 11,
     /// Copy TTL "inwards" -- from outermost to next-to-outermost
-    CopyTtlIn = 12, 
+    CopyTtlIn = 12,
     /// MPLS TTL
-    SetMplsTtl = 15, 
+    SetMplsTtl = 15,
     /// Decrement MPLS TTL
-    DecMplsTtl = 16, 
+    DecMplsTtl = 16,
     /// Push a new VLAN tag
-    PushVlan = 17, 
+    PushVlan = 17,
     /// Pop the outer VLAN tag
-    PopVlan = 18, 
+    PopVlan = 18,
     /// Push a new MPLS tag
-    PushMpls = 19, 
+    PushMpls = 19,
     /// Pop the outer MPLS tag
     PopMpls = 20, /* */
     /// Set queue id when outputting to a port
-    SetQueue = 21, 
+    SetQueue = 21,
     /// Apply group.
     Group = 22, /* . */
     /// IP TTL.
-    SetNwTtl = 23, 
+    SetNwTtl = 23,
     /// Decrement IP TTL.
-    DecNwTtl = 24, 
+    DecNwTtl = 24,
     /// Set a header field using OXM TLV format.
-    SetField = 25, 
+    SetField = 25,
     /// Push a new PBB service tag (I-TAG)
-    PushPbb = 26, 
+    PushPbb = 26,
     /// Pop the outer PBB service tag (I-TAG)
-    PopPbb = 27, 
+    PopPbb = 27,
     // not supported
     //Experimenter = 0xffff,
 }
@@ -51,9 +51,10 @@ unsafe impl Send for ActionType {}
 
 pub const ACTION_HEADER_LEN: u16 = 4;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Getters, Debug, PartialEq, Clone)]
 pub struct ActionHeader {
     ttype: ActionType,
+    #[get = "pub"]
     len: u16,
     payload: ActionPayload,
 }
@@ -84,16 +85,17 @@ impl ActionHeader {
 
 unsafe impl Send for ActionHeader {}
 
-impl<'a> TryFrom<&'a [u8]> for ActionHeader{
-    type Error = Error ;
+impl<'a> TryFrom<&'a [u8]> for ActionHeader {
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_ttype = cursor.read_u16::<BigEndian>().unwrap();
-        let ttype = ActionType::from_u16(raw_ttype)
-            .ok_or::<Error>(ErrorKind::UnknownValue(raw_ttype as u64, stringify!(ActionType)).into())?;
+        let ttype = ActionType::from_u16(raw_ttype).ok_or::<Error>(
+            ErrorKind::UnknownValue(raw_ttype as u64, stringify!(ActionType)).into(),
+        )?;
         let len = cursor.read_u16::<BigEndian>().unwrap();
         let payload = try_from_action_payload(&bytes[4..], &ttype)?;
-        Ok(ActionHeader{
+        Ok(ActionHeader {
             ttype: ttype,
             len: len,
             payload: payload,
@@ -101,10 +103,11 @@ impl<'a> TryFrom<&'a [u8]> for ActionHeader{
     }
 }
 
-impl Into<Vec<u8>> for ActionHeader{
+impl Into<Vec<u8>> for ActionHeader {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.ttype.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.ttype.to_u16().unwrap())
+            .unwrap();
         res.write_u16::<BigEndian>(self.len).unwrap();
         res.extend_from_slice(&Into::<Vec<u8>>::into(self.payload)[..]);
         res
@@ -158,7 +161,7 @@ impl Into<Vec<u8>> for ActionPayload {
 }
 
 fn try_from_action_payload(bytes: &[u8], ttype: &ActionType) -> Result<ActionPayload> {
-   Ok(match ttype {
+    Ok(match ttype {
         ActionType::Output => ActionPayload::Output(PayloadOutput::try_from(bytes)?),
         ActionType::CopyTtlOut => ActionPayload::CopyTtlOut(PayloadCopyTtlOut::try_from(bytes)?),
         ActionType::CopyTtlIn => ActionPayload::CopyTtlIn(PayloadCopyTtlIn::try_from(bytes)?),
@@ -196,12 +199,12 @@ pub struct PayloadOutput {
 unsafe impl Send for PayloadOutput {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadOutput {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_port = cursor.read_u32::<BigEndian>().unwrap();
         let port = PortNumber::try_from(raw_port)?;
-        Ok(PayloadOutput{
+        Ok(PayloadOutput {
             port: port,
             max_len: cursor.read_u16::<BigEndian>().unwrap(),
         })
@@ -211,7 +214,7 @@ impl<'a> TryFrom<&'a [u8]> for PayloadOutput {
 
 impl Into<ActionHeader> for PayloadOutput {
     fn into(self) -> ActionHeader {
-        ActionHeader{
+        ActionHeader {
             ttype: ActionType::Output,
             len: ACTION_HEADER_LEN + PAYLOAD_OUTPUT_LEN,
             payload: ActionPayload::Output(self),
@@ -239,10 +242,10 @@ pub struct PayloadGroup {
 unsafe impl Send for PayloadGroup {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadGroup {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadGroup{
+        Ok(PayloadGroup {
             group_id: cursor.read_u32::<BigEndian>().unwrap(),
         })
     }
@@ -265,10 +268,10 @@ pub struct PayloadSetQueue {
 unsafe impl Send for PayloadSetQueue {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSetQueue {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadSetQueue{
+        Ok(PayloadSetQueue {
             queue_id: cursor.read_u32::<BigEndian>().unwrap(),
         })
     }
@@ -292,10 +295,10 @@ pub struct PayloadSetMplsTtl {
 unsafe impl Send for PayloadSetMplsTtl {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSetMplsTtl {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadSetMplsTtl{
+        Ok(PayloadSetMplsTtl {
             mpls_ttl: cursor.read_u8().unwrap(),
         })
         // pad 3 bytes by ignoring them
@@ -321,10 +324,9 @@ pub struct PayloadDecMplsTtl {
 unsafe impl Send for PayloadDecMplsTtl {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadDecMplsTtl {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadDecMplsTtl{
-        })
+        Ok(PayloadDecMplsTtl {})
         // pad 4 bytes by ignoring them
     }
 }
@@ -347,10 +349,10 @@ pub struct PayloadSetNwTtl {
 unsafe impl Send for PayloadSetNwTtl {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSetNwTtl {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadSetNwTtl{
+        Ok(PayloadSetNwTtl {
             nw_ttl: cursor.read_u8().unwrap(),
         })
         // pad 3 bytes by ignoring them
@@ -376,10 +378,9 @@ pub struct PayloadDecNwTtl {
 unsafe impl Send for PayloadDecNwTtl {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadDecNwTtl {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadDecNwTtl{
-        })
+        Ok(PayloadDecNwTtl {})
         // pad 4 bytes by ignoring them
     }
 }
@@ -401,10 +402,9 @@ pub struct PayloadCopyTtlOut {
 unsafe impl Send for PayloadCopyTtlOut {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadCopyTtlOut {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadCopyTtlOut{
-        })
+        Ok(PayloadCopyTtlOut {})
         // pad 4 bytes by ignoring them
     }
 }
@@ -426,10 +426,9 @@ pub struct PayloadCopyTtlIn {
 unsafe impl Send for PayloadCopyTtlIn {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadCopyTtlIn {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadCopyTtlIn{
-        })
+        Ok(PayloadCopyTtlIn {})
         // pad 4 bytes by ignoring them
     }
 }
@@ -452,13 +451,14 @@ pub struct PayloadPushVlan {
 unsafe impl Send for PayloadPushVlan {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadPushVlan {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_ethertpye = cursor.read_u16::<BigEndian>().unwrap();
-        let ethertype = EtherType::from_u16(raw_ethertpye)
-            .ok_or::<Error>(ErrorKind::UnknownValue(raw_ethertpye as u64, stringify!(EtherType)).into())?;
-        Ok(PayloadPushVlan{
+        let ethertype = EtherType::from_u16(raw_ethertpye).ok_or::<Error>(
+            ErrorKind::UnknownValue(raw_ethertpye as u64, stringify!(EtherType)).into(),
+        )?;
+        Ok(PayloadPushVlan {
             ethertype: ethertype,
         })
         // pad 2 bytes by ignoring them
@@ -468,7 +468,8 @@ impl<'a> TryFrom<&'a [u8]> for PayloadPushVlan {
 impl Into<Vec<u8>> for PayloadPushVlan {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.ethertype.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.ethertype.to_u16().unwrap())
+            .unwrap();
         res.write_u16::<BigEndian>(0).unwrap();
         res
     }
@@ -484,13 +485,14 @@ pub struct PayloadPushMpls {
 unsafe impl Send for PayloadPushMpls {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadPushMpls {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_ethertpye = cursor.read_u16::<BigEndian>().unwrap();
-        let ethertype = EtherType::from_u16(raw_ethertpye)
-            .ok_or::<Error>(ErrorKind::UnknownValue(raw_ethertpye as u64, stringify!(EtherType)).into())?;
-        Ok(PayloadPushMpls{
+        let ethertype = EtherType::from_u16(raw_ethertpye).ok_or::<Error>(
+            ErrorKind::UnknownValue(raw_ethertpye as u64, stringify!(EtherType)).into(),
+        )?;
+        Ok(PayloadPushMpls {
             ethertype: ethertype,
         })
         // pad 2 bytes by ignoring them
@@ -500,7 +502,8 @@ impl<'a> TryFrom<&'a [u8]> for PayloadPushMpls {
 impl Into<Vec<u8>> for PayloadPushMpls {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.ethertype.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.ethertype.to_u16().unwrap())
+            .unwrap();
         res.write_u16::<BigEndian>(0).unwrap();
         res
     }
@@ -516,13 +519,14 @@ pub struct PayloadPushPbb {
 unsafe impl Send for PayloadPushPbb {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadPushPbb {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_ethertpye = cursor.read_u16::<BigEndian>().unwrap();
-        let ethertype = EtherType::from_u16(raw_ethertpye)
-            .ok_or::<Error>(ErrorKind::UnknownValue(raw_ethertpye as u64, stringify!(EtherType)).into())?;
-        Ok(PayloadPushPbb{
+        let ethertype = EtherType::from_u16(raw_ethertpye).ok_or::<Error>(
+            ErrorKind::UnknownValue(raw_ethertpye as u64, stringify!(EtherType)).into(),
+        )?;
+        Ok(PayloadPushPbb {
             ethertype: ethertype,
         })
         // pad 2 bytes by ignoring them
@@ -532,7 +536,8 @@ impl<'a> TryFrom<&'a [u8]> for PayloadPushPbb {
 impl Into<Vec<u8>> for PayloadPushPbb {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.ethertype.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.ethertype.to_u16().unwrap())
+            .unwrap();
         res.write_u16::<BigEndian>(0).unwrap();
         res
     }
@@ -547,10 +552,9 @@ pub struct PayloadPopVlan {
 unsafe impl Send for PayloadPopVlan {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadPopVlan {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadPopVlan{
-        })
+        Ok(PayloadPopVlan {})
         // pad 4 bytes by ignoring them
     }
 }
@@ -573,13 +577,14 @@ pub struct PayloadPopMpls {
 unsafe impl Send for PayloadPopMpls {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadPopMpls {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_ethertpye = cursor.read_u16::<BigEndian>().unwrap();
-        let ethertype = EtherType::from_u16(raw_ethertpye)
-            .ok_or::<Error>(ErrorKind::UnknownValue(raw_ethertpye as u64, stringify!(EtherType)).into())?;
-        Ok(PayloadPopMpls{
+        let ethertype = EtherType::from_u16(raw_ethertpye).ok_or::<Error>(
+            ErrorKind::UnknownValue(raw_ethertpye as u64, stringify!(EtherType)).into(),
+        )?;
+        Ok(PayloadPopMpls {
             ethertype: ethertype,
         })
         // pad 2 bytes by ignoring them
@@ -589,7 +594,8 @@ impl<'a> TryFrom<&'a [u8]> for PayloadPopMpls {
 impl Into<Vec<u8>> for PayloadPopMpls {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.ethertype.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.ethertype.to_u16().unwrap())
+            .unwrap();
         res.write_u16::<BigEndian>(0).unwrap();
         res
     }
@@ -604,10 +610,9 @@ pub struct PayloadPopPbb {
 unsafe impl Send for PayloadPopPbb {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadPopPbb {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadPopPbb{
-        })
+        Ok(PayloadPopPbb {})
         // pad 4 bytes by ignoring them
     }
 }
@@ -637,14 +642,12 @@ pub struct PayloadSetField {
 unsafe impl Send for PayloadSetField {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSetField {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let tlv_header = OxmTlvHeader(cursor.read_u32::<BigEndian>().unwrap());
         let field = TlvMatch::try_from(tlv_header, &bytes[4..])?;
-        Ok(PayloadSetField{
-            field: field,
-        })
+        Ok(PayloadSetField { field: field })
         // pad n bytes by ignoring them
     }
 }
@@ -652,9 +655,9 @@ impl<'a> TryFrom<&'a [u8]> for PayloadSetField {
 impl Into<Vec<u8>> for PayloadSetField {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        let len = self.field.tlv_header.get_length()+4;//add 4 bytes from msg header
+        let len = self.field.tlv_header.get_length() + 4; //add 4 bytes from msg header
         res.extend_from_slice(&Into::<Vec<u8>>::into(self.field)[..]);
-        let pad_bytes_count = (len + 7)/8*8 - len;
+        let pad_bytes_count = (len + 7) / 8 * 8 - len;
         for _ in 0..pad_bytes_count {
             res.write_u8(0).unwrap();
         }

@@ -1,9 +1,9 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::{TryFrom, Into};
+use std::convert::{Into, TryFrom};
 use std::io::{Cursor, Seek, SeekFrom};
 
-use super::ports::PortNumber;
 use super::packet_queue;
+use super::ports::PortNumber;
 
 use super::super::err::*;
 
@@ -13,7 +13,7 @@ pub struct QueueGetConfigRequest {
     // pad 4 bytes
 }
 
-impl Into<Vec<u8>> for QueueGetConfigRequest{
+impl Into<Vec<u8>> for QueueGetConfigRequest {
     fn into(self) -> Vec<u8> {
         let mut vec = Vec::new();
         vec.write_u32::<BigEndian>(self.port.into()).unwrap();
@@ -23,11 +23,11 @@ impl Into<Vec<u8>> for QueueGetConfigRequest{
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for QueueGetConfigRequest{
+impl<'a> TryFrom<&'a [u8]> for QueueGetConfigRequest {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(QueueGetConfigRequest{
+        Ok(QueueGetConfigRequest {
             port: PortNumber::try_from(cursor.read_u32::<BigEndian>().unwrap())?,
         })
     }
@@ -42,7 +42,7 @@ pub struct QueueGetConfigReply {
     queues: Vec<packet_queue::PacketQueue>,
 }
 
-impl Into<Vec<u8>> for QueueGetConfigReply{
+impl Into<Vec<u8>> for QueueGetConfigReply {
     fn into(self) -> Vec<u8> {
         let mut vec = Vec::new();
         vec.write_u32::<BigEndian>(self.port.into()).unwrap();
@@ -55,7 +55,7 @@ impl Into<Vec<u8>> for QueueGetConfigReply{
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for QueueGetConfigReply{
+impl<'a> TryFrom<&'a [u8]> for QueueGetConfigReply {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
@@ -66,14 +66,15 @@ impl<'a> TryFrom<&'a [u8]> for QueueGetConfigReply{
         let mut bytes_left = bytes.len() - 8;
         while bytes_left > 0 {
             let queue_len = packet_queue::PacketQueue::read_len(&mut cursor)?;
-            let queue_slice = &bytes[cursor.position() as usize..cursor.position() as usize + queue_len];
+            let queue_slice =
+                &bytes[cursor.position() as usize..cursor.position() as usize + queue_len];
             let queue = packet_queue::PacketQueue::try_from(queue_slice)?;
             queues.push(queue);
             bytes_left -= queue_len;
             cursor.seek(SeekFrom::Current(queue_len as i64)).unwrap();
         }
 
-        Ok(QueueGetConfigReply{
+        Ok(QueueGetConfigReply {
             port: port,
             queues: queues,
         })

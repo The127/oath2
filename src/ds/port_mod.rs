@@ -1,9 +1,9 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::{TryFrom, Into};
+use std::convert::{Into, TryFrom};
 use std::io::{Cursor, Seek, SeekFrom};
 
-use super::ports::{PortNumber, PortFeatures, PortConfig};
-use super::hw_addr::{EthernetAddress, from_slice_eth};
+use super::hw_addr::{from_slice_eth, EthernetAddress};
+use super::ports::{PortConfig, PortFeatures, PortNumber};
 
 use super::super::err::*;
 
@@ -21,7 +21,7 @@ pub struct PortMod {
 
 unsafe impl Send for PortMod {}
 
-impl<'a> TryFrom<&'a [u8]> for PortMod{
+impl<'a> TryFrom<&'a [u8]> for PortMod {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
@@ -43,10 +43,11 @@ impl<'a> TryFrom<&'a [u8]> for PortMod{
         // read raw version val
         let advertise = cursor.read_u32::<BigEndian>().unwrap();
         // try to decode it
-        let advertise = PortFeatures::from_bits(advertise)
-            .ok_or::<Error>(ErrorKind::UnknownValue(advertise as u64, stringify!(PortFeatures)).into())?;
+        let advertise = PortFeatures::from_bits(advertise).ok_or::<Error>(
+            ErrorKind::UnknownValue(advertise as u64, stringify!(PortFeatures)).into(),
+        )?;
 
-        Ok(PortMod{
+        Ok(PortMod {
             port_no: port_no,
             hw_addr: from_slice_eth(hw_addr)?,
             config: config,
@@ -56,10 +57,10 @@ impl<'a> TryFrom<&'a [u8]> for PortMod{
     }
 }
 
-impl Into<Vec<u8>> for PortMod{
+impl Into<Vec<u8>> for PortMod {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u32::<BigEndian>(self.port_no.into()).unwrap(); 
+        res.write_u32::<BigEndian>(self.port_no.into()).unwrap();
         res.write_u32::<BigEndian>(0).unwrap(); // pad 4 bytes
         res.extend_from_slice(&self.hw_addr[..]);
         res.write_u16::<BigEndian>(0).unwrap(); // pad 2 bytes

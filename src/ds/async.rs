@@ -1,6 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::{TryFrom, Into};
-use std::io::{Cursor};
+use std::convert::{Into, TryFrom};
+use std::io::Cursor;
 
 use super::super::err::*;
 
@@ -20,7 +20,7 @@ impl<'a> TryFrom<&'a [u8]> for Async {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(Async{
+        Ok(Async {
             packet_in_mask_1: cursor.read_u32::<BigEndian>().unwrap(),
             packet_in_mask_2: cursor.read_u32::<BigEndian>().unwrap(),
             port_status_mask_1: cursor.read_u32::<BigEndian>().unwrap(),
@@ -38,8 +38,10 @@ impl Into<Vec<u8>> for Async {
         res.write_u32::<BigEndian>(self.packet_in_mask_2).unwrap();
         res.write_u32::<BigEndian>(self.port_status_mask_1).unwrap();
         res.write_u32::<BigEndian>(self.port_status_mask_2).unwrap();
-        res.write_u32::<BigEndian>(self.flow_removed_mask_1).unwrap();
-        res.write_u32::<BigEndian>(self.flow_removed_mask_2).unwrap();
+        res.write_u32::<BigEndian>(self.flow_removed_mask_1)
+            .unwrap();
+        res.write_u32::<BigEndian>(self.flow_removed_mask_2)
+            .unwrap();
         res
     }
 }

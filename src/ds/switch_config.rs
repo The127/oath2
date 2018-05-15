@@ -1,6 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::{TryFrom, Into};
-use std::io::{Cursor};
+use std::convert::{Into, TryFrom};
+use std::io::Cursor;
 
 use super::super::err::*;
 
@@ -19,7 +19,7 @@ impl<'a> TryFrom<&'a [u8]> for SwitchConfig {
         let mut cursor = Cursor::new(bytes);
         let flags = ConfigFlags::from_bits(cursor.read_u16::<BigEndian>().unwrap()).unwrap();
         let miss_send_len = cursor.read_u16::<BigEndian>().unwrap();
-        Ok(SwitchConfig{
+        Ok(SwitchConfig {
             flags: flags,
             miss_send_len: miss_send_len,
         })
@@ -36,13 +36,13 @@ impl Into<Vec<u8>> for SwitchConfig {
 }
 
 bitflags!{
-    /// Handling of IP fragments. 
+    /// Handling of IP fragments.
     pub struct ConfigFlags: u16 {
-        /// No special handling for fragments. 
+        /// No special handling for fragments.
         const FRAG_NORMAL = 0;
-        /// Drop fragments. 
+        /// Drop fragments.
         const FRAG_DROP = 1 << 0;
-        /// Reassemble (only if OFPC_IP_REASM set). 
+        /// Reassemble (only if OFPC_IP_REASM set).
         const FRAG_REASM = 1 << 1;
         const FRAG_MASK = 3;
     }

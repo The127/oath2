@@ -1,44 +1,43 @@
-
 use super::super::err::*;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use num_traits::{FromPrimitive, ToPrimitive};
-use std::convert::{TryFrom, Into};
-use std::io::{SeekFrom, Seek, Cursor};
+use std::convert::{Into, TryFrom};
+use std::io::{Cursor, Seek, SeekFrom};
 
 use super::actions;
 use std::path;
 
 #[derive(Primitive, Debug, PartialEq, Clone)]
 pub enum InstructionType {
-    /// Setup the next table in the lookup pipeline 
-    GotoTable = 1, 
-    /// Setup the metadata field for use later in pipeline 
-    WriteMetadata = 2, 
-    /// Write the action(s) onto the datapath action set 
-    WriteActions = 3, 
-    /// Applies the action(s) immediately 
-    ApplyActions = 4, 
+    /// Setup the next table in the lookup pipeline
+    GotoTable = 1,
+    /// Setup the metadata field for use later in pipeline
+    WriteMetadata = 2,
+    /// Write the action(s) onto the datapath action set
+    WriteActions = 3,
+    /// Applies the action(s) immediately
+    ApplyActions = 4,
     /// Clears all actions from the datapath
-    /// action set 
-    Clearactions = 5, 
-    /// Apply meter (rate limiter) 
-    Meter = 6, 
-    /// Experimenter instruction 
-    Experimenter = 0xFFFF, 
+    /// action set
+    Clearactions = 5,
+    /// Apply meter (rate limiter)
+    Meter = 6,
+    /// Experimenter instruction
+    Experimenter = 0xFFFF,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct InstructionHeader {
-    /// OFPIT_GOTO_TABLE 
-    ttype: InstructionType, 
-    /// Length of this struct in bytes. 
-    len: u16, 
+    /// OFPIT_GOTO_TABLE
+    ttype: InstructionType,
+    /// Length of this struct in bytes.
+    len: u16,
     payload: InstructionPayload,
 }
 
 pub fn get_instruction_slice_len(cur: &mut Cursor<&[u8]>) -> usize {
-    cur.seek(SeekFrom::Current(2)).unwrap();//skip to length
+    cur.seek(SeekFrom::Current(2)).unwrap(); //skip to length
     let len = cur.read_u16::<BigEndian>().unwrap();
     cur.seek(SeekFrom::Current(-4)).unwrap();
     len as usize
@@ -47,7 +46,8 @@ pub fn get_instruction_slice_len(cur: &mut Cursor<&[u8]>) -> usize {
 impl Into<Vec<u8>> for InstructionHeader {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.ttype.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.ttype.to_u16().unwrap())
+            .unwrap();
         res.write_u16::<BigEndian>(self.len).unwrap();
         res.extend_from_slice(&Into::<Vec<u8>>::into(self.payload));
         res
@@ -55,7 +55,7 @@ impl Into<Vec<u8>> for InstructionHeader {
 }
 
 impl<'a> TryFrom<&'a [u8]> for InstructionHeader {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
 
@@ -68,8 +68,9 @@ impl<'a> TryFrom<&'a [u8]> for InstructionHeader {
             error!("{}", err_msg);
             err_msg
         })?;
-        let ttype = InstructionType::from_u16(raw_ttype)
-            .ok_or::<Error>(ErrorKind::UnknownValue(raw_ttype as u64, stringify!(InstructionType)).into())?;
+        let ttype = InstructionType::from_u16(raw_ttype).ok_or::<Error>(
+            ErrorKind::UnknownValue(raw_ttype as u64, stringify!(InstructionType)).into(),
+        )?;
 
         let length = cursor.read_u16::<BigEndian>().chain_err(|| {
             let err_msg = format!(
@@ -83,19 +84,31 @@ impl<'a> TryFrom<&'a [u8]> for InstructionHeader {
         let payload_slice = &bytes[4..];
 
         let payload = match ttype {
-            InstructionType::GotoTable => InstructionPayload::GotoTable(PayloadGotoTable::try_from(payload_slice)?),
-            InstructionType::WriteMetadata => InstructionPayload::WriteMetaData(PayloadWriteMetaData::try_from(payload_slice)?),
-            InstructionType::WriteActions => InstructionPayload::WriteActions(PayloadWriteActions::try_from(payload_slice)?),
-            InstructionType::ApplyActions => InstructionPayload::ApplyActions(PayloadApplyActions::try_from(payload_slice)?),
-            InstructionType::Clearactions => InstructionPayload::ClearActions(PayloadClearActions::try_from(payload_slice)?),
-            InstructionType::Meter => InstructionPayload::Meter(PayloadMeter::try_from(payload_slice)?),
+            InstructionType::GotoTable => {
+                InstructionPayload::GotoTable(PayloadGotoTable::try_from(payload_slice)?)
+            }
+            InstructionType::WriteMetadata => {
+                InstructionPayload::WriteMetaData(PayloadWriteMetaData::try_from(payload_slice)?)
+            }
+            InstructionType::WriteActions => {
+                InstructionPayload::WriteActions(PayloadWriteActions::try_from(payload_slice)?)
+            }
+            InstructionType::ApplyActions => {
+                InstructionPayload::ApplyActions(PayloadApplyActions::try_from(payload_slice)?)
+            }
+            InstructionType::Clearactions => {
+                InstructionPayload::ClearActions(PayloadClearActions::try_from(payload_slice)?)
+            }
+            InstructionType::Meter => {
+                InstructionPayload::Meter(PayloadMeter::try_from(payload_slice)?)
+            }
             InstructionType::Experimenter => bail!(ErrorKind::UnsupportedValue(
                 ttype as u64,
                 stringify!(InstructionType),
             )),
         };
 
-        Ok(InstructionHeader{
+        Ok(InstructionHeader {
             ttype: ttype,
             len: length,
             payload: payload,
@@ -104,7 +117,7 @@ impl<'a> TryFrom<&'a [u8]> for InstructionHeader {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum InstructionPayload{
+pub enum InstructionPayload {
     GotoTable(PayloadGotoTable),
     WriteMetaData(PayloadWriteMetaData),
     WriteActions(PayloadWriteActions),
@@ -129,16 +142,16 @@ impl Into<Vec<u8>> for InstructionPayload {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PayloadGotoTable {
-    /// Set next table in the lookup pipeline 
-    table_id: u8, 
+    /// Set next table in the lookup pipeline
+    table_id: u8,
     // Pad 3 bytes
 }
 
 impl<'a> TryFrom<&'a [u8]> for PayloadGotoTable {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadGotoTable{
+        Ok(PayloadGotoTable {
             table_id: cursor.read_u8().chain_err(|| {
                 let err_msg = format!(
                     "Could not read PayloadGotoTable table_id!{}Cursor: {:?}",
@@ -171,11 +184,11 @@ pub struct PayloadWriteMetaData {
 }
 
 impl<'a> TryFrom<&'a [u8]> for PayloadWriteMetaData {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         cursor.read_u32::<BigEndian>().unwrap(); //4 bytes padding
-        Ok(PayloadWriteMetaData{
+        Ok(PayloadWriteMetaData {
             metadata: cursor.read_u64::<BigEndian>().chain_err(|| {
                 let err_msg = format!(
                     "Could not read PayloadWriteMetaData metadata!{}Cursor: {:?}",
@@ -215,22 +228,21 @@ pub struct PayloadWriteActions {
 }
 
 impl<'a> TryFrom<&'a [u8]> for PayloadWriteActions {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let mut actions = Vec::new();
         let mut bytes_remaining = bytes.len();
         while bytes_remaining > 0 {
             let action_len = actions::ActionHeader::read_len(&mut cursor)?;
-            let action_slice = &bytes[cursor.position() as usize..cursor.position() as usize + action_len];
+            let action_slice =
+                &bytes[cursor.position() as usize..cursor.position() as usize + action_len];
             let action = actions::ActionHeader::try_from(action_slice)?;
             cursor.seek(SeekFrom::Current(action_len as i64)).unwrap();
             bytes_remaining -= action_len;
             actions.push(action);
         }
-        Ok(PayloadWriteActions{
-            actions: actions,
-        })
+        Ok(PayloadWriteActions { actions: actions })
     }
 }
 
@@ -251,22 +263,21 @@ pub struct PayloadApplyActions {
     actions: Vec<actions::ActionHeader>,
 }
 impl<'a> TryFrom<&'a [u8]> for PayloadApplyActions {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let mut actions = Vec::new();
         let mut bytes_remaining = bytes.len();
         while bytes_remaining > 0 {
             let action_len = actions::ActionHeader::read_len(&mut cursor)?;
-            let action_slice = &bytes[cursor.position() as usize..cursor.position() as usize + action_len];
+            let action_slice =
+                &bytes[cursor.position() as usize..cursor.position() as usize + action_len];
             let action = actions::ActionHeader::try_from(action_slice)?;
             cursor.seek(SeekFrom::Current(action_len as i64)).unwrap();
             bytes_remaining -= action_len;
             actions.push(action);
         }
-        Ok(PayloadApplyActions{
-            actions: actions,
-        })
+        Ok(PayloadApplyActions { actions: actions })
     }
 }
 
@@ -287,9 +298,9 @@ pub struct PayloadClearActions {
 }
 
 impl<'a> TryFrom<&'a [u8]> for PayloadClearActions {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadClearActions{})
+        Ok(PayloadClearActions {})
     }
 }
 
@@ -307,10 +318,10 @@ pub struct PayloadMeter {
 }
 
 impl<'a> TryFrom<&'a [u8]> for PayloadMeter {
-    type Error = Error ;
+    type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadMeter{
+        Ok(PayloadMeter {
             meter_id: cursor.read_u32::<BigEndian>().chain_err(|| {
                 let err_msg = format!(
                     "Could not read PayloadMeter meter_id!{}Cursor: {:?}",

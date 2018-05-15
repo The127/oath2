@@ -1,5 +1,5 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::{TryFrom, Into};
+use std::convert::{Into, TryFrom};
 use std::io::{Cursor, Seek, SeekFrom};
 
 use super::super::err::*;
@@ -27,7 +27,8 @@ impl<'a> TryFrom<&'a [u8]> for SwitchFeatures {
         let n_tables = cursor.read_u8().unwrap();
         let auxiliary_id = cursor.read_u8().unwrap();
         cursor.seek(SeekFrom::Current(2)).unwrap(); // pad 2 bytes
-        let capabilities = Capabilities::from_bits(cursor.read_u32::<BigEndian>().unwrap()).unwrap();
+        let capabilities =
+            Capabilities::from_bits(cursor.read_u32::<BigEndian>().unwrap()).unwrap();
         let reserved = cursor.read_u32::<BigEndian>().unwrap();
 
         Ok(SwitchFeatures {
@@ -49,9 +50,10 @@ impl Into<Vec<u8>> for SwitchFeatures {
         res.write_u32::<BigEndian>(self.n_buffers).unwrap();
         res.write_u8(self.n_tables).unwrap();
         res.write_u8(self.auxiliary_id).unwrap();
-        res.write_u16::<BigEndian>(0).unwrap();//pad 2 bytes
+        res.write_u16::<BigEndian>(0).unwrap(); //pad 2 bytes
 
-        res.write_u32::<BigEndian>(self.capabilities.bits()).unwrap();
+        res.write_u32::<BigEndian>(self.capabilities.bits())
+            .unwrap();
         res.write_u32::<BigEndian>(self.reserved).unwrap();
         res
     }
@@ -60,19 +62,19 @@ impl Into<Vec<u8>> for SwitchFeatures {
 bitflags!{
     /* Capabilities supported by the datapath. */
     pub struct Capabilities: u32 {
-        /// Flow statistics. 
+        /// Flow statistics.
         const FLOW_STATS = 1 << 0;
-        /// Table statistics. 
+        /// Table statistics.
         const TABLE_STATS = 1 << 1;
-        /// Port statistics. 
+        /// Port statistics.
         const PORT_STATS = 1 << 2;
         /// Group statistics.
-        const GROUP_STATS = 1 << 3; 
-        /// Can reassemble IP fragments. 
+        const GROUP_STATS = 1 << 3;
+        /// Can reassemble IP fragments.
         const IP_REASM = 1 << 5;
-        /// Queue statistics. 
+        /// Queue statistics.
         const QUEUE_STATS = 1 << 6;
-        /// Switch will block looping ports. 
+        /// Switch will block looping ports.
         const PORT_BLOCKED = 1 << 8;
     }
 }

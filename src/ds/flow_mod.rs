@@ -1,11 +1,11 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use num_traits::{FromPrimitive, ToPrimitive};
-use std::convert::{TryFrom, Into};
+use std::convert::{Into, TryFrom};
 use std::io::{Cursor, Seek, SeekFrom};
 
+use super::flow_instructions;
 use super::flow_match::Match;
 use super::ports::PortNumber;
-use super::flow_instructions;
 
 use super::super::err::*;
 
@@ -37,8 +37,9 @@ impl<'a> TryFrom<&'a [u8]> for FlowMod {
         let cookie_mask = cursor.read_u64::<BigEndian>().unwrap();
         let table_id = cursor.read_u8().unwrap();
         let command_raw = cursor.read_u8().unwrap();
-        let command = FlowModCommand::from_u8(command_raw)
-            .ok_or::<Error>(ErrorKind::UnknownValue(command_raw as u64, stringify!(FlowModCommand)).into())?;
+        let command = FlowModCommand::from_u8(command_raw).ok_or::<Error>(
+            ErrorKind::UnknownValue(command_raw as u64, stringify!(FlowModCommand)).into(),
+        )?;
         let idle_timeout = cursor.read_u16::<BigEndian>().unwrap();
         let hard_timeout = cursor.read_u16::<BigEndian>().unwrap();
         let priority = cursor.read_u16::<BigEndian>().unwrap();
@@ -47,25 +48,31 @@ impl<'a> TryFrom<&'a [u8]> for FlowMod {
         let out_group = cursor.read_u32::<BigEndian>().unwrap();
         let flags_raw = cursor.read_u16::<BigEndian>().unwrap();
         let flags = FlowModFlags::from_bits(flags_raw).unwrap();
-        
+
         let mmatch_slice_len = Match::read_len(&mut cursor)?;
-        let mmatch_slice = &bytes[cursor.position() as usize..cursor.position() as usize + mmatch_slice_len];
+        let mmatch_slice =
+            &bytes[cursor.position() as usize..cursor.position() as usize + mmatch_slice_len];
 
         let mmatch = Match::try_from(mmatch_slice)?;
-        cursor.seek(SeekFrom::Current(mmatch_slice_len as i64)).unwrap();
+        cursor
+            .seek(SeekFrom::Current(mmatch_slice_len as i64))
+            .unwrap();
 
         let mut instructions = Vec::new();
         let mut bytes_left = bytes.len() as u64;
         while bytes_left > cursor.position() {
             let instruction_len = flow_instructions::get_instruction_slice_len(&mut cursor);
-            let instruction_slice = &bytes[cursor.position() as usize..cursor.position() as usize + instruction_len];
+            let instruction_slice =
+                &bytes[cursor.position() as usize..cursor.position() as usize + instruction_len];
             let instruction = flow_instructions::InstructionHeader::try_from(instruction_slice)?;
-            cursor.seek(SeekFrom::Current(instruction_len as i64)).unwrap();
+            cursor
+                .seek(SeekFrom::Current(instruction_len as i64))
+                .unwrap();
             bytes_left -= instruction_len as u64;
             instructions.push(instruction);
         }
-        
-        Ok(FlowMod{
+
+        Ok(FlowMod {
             cookie: cookie,
             cookie_mask: cookie_mask,
             table_id: table_id,
@@ -97,7 +104,7 @@ impl Into<Vec<u8>> for FlowMod {
         res.write_u32::<BigEndian>(self.out_port.into()).unwrap();
         res.write_u32::<BigEndian>(self.out_group).unwrap();
         res.write_u16::<BigEndian>(self.flags.bits()).unwrap();
-        res.write_u16::<BigEndian>(0).unwrap(); // pad 2 bytes 
+        res.write_u16::<BigEndian>(0).unwrap(); // pad 2 bytes
         res.extend_from_slice(&Into::<Vec<u8>>::into(self.mmatch)[..]);
         for instruction in self.instructions {
             res.extend_from_slice(&Into::<Vec<u8>>::into(instruction)[..]);
@@ -108,32 +115,32 @@ impl Into<Vec<u8>> for FlowMod {
 
 #[derive(Primitive, PartialEq, Debug, Clone)]
 pub enum FlowModCommand {
-    ///  New flow. 
-    Add = 0, 
-    /// Modify all matching flows. 
-    Modify = 1, 
+    ///  New flow.
+    Add = 0,
+    /// Modify all matching flows.
+    Modify = 1,
     ///  Modify entry strictly matching wildcards and
     /// priority.
-    ModifyStrict = 2, 
-    /// /// Delete all matching flows. 
-    Delete = 3, 
+    ModifyStrict = 2,
+    /// /// Delete all matching flows.
+    Delete = 3,
     /// Delete entry strictly matching wildcards and
-    /// priority. 
-    DeleteStrict = 4, 
+    /// priority.
+    DeleteStrict = 4,
 }
 
 bitflags!{
     pub struct FlowModFlags: u16 {
         /// Send flow removed message when flow
         // expires or is deleted.
-        const SEND_FLOW_REM = 1 << 0; 
+        const SEND_FLOW_REM = 1 << 0;
         /// Check for overlapping entries first.
         const CHECK_OVERLAP = 1 << 1;
-        /// Reset flow packet and byte counts. 
-        const RESET_COUNTS = 1 << 2; 
-        /// Don't keep track of packet count. 
-        const NO_PKT_COUNTS = 1 << 3; 
-        /// Don't keep track of byte count. 
+        /// Reset flow packet and byte counts.
+        const RESET_COUNTS = 1 << 2;
+        /// Don't keep track of packet count.
+        const NO_PKT_COUNTS = 1 << 3;
+        /// Don't keep track of byte count.
         const NO_BYT_COUNTS = 1 << 4;
     }
 }

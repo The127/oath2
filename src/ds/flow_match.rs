@@ -1,11 +1,11 @@
 use super::super::err::*;
+use super::hw_addr;
 use super::ports::PortNumber;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use num_traits::{FromPrimitive, ToPrimitive};
 use std::convert::{Into, TryFrom};
 use std::io::{Cursor, Seek, SeekFrom};
 use std::path;
-use super::hw_addr;
 
 /// Length of Math is 8 bytes.
 pub const MATCH_LENGTH: usize = 8;
@@ -46,7 +46,7 @@ impl Match {
         };
         // go back to start
         cursor.seek(SeekFrom::Current(-4)).unwrap();
-        Ok((len + ((len + 7)/8*8 - len)) as usize) // see above for this formula
+        Ok((len + ((len + 7) / 8 * 8 - len)) as usize) // see above for this formula
     }
 }
 
@@ -59,47 +59,55 @@ impl<'a> TryFrom<&'a [u8]> for Match {
         // read raw version val
         let ttype_raw = cursor.read_u16::<BigEndian>().unwrap();
         // try to decode it
-        let ttype = MatchType::from_u16(ttype_raw)
-            .ok_or::<Error>(ErrorKind::UnknownValue(ttype_raw as u64, stringify!(MatchType)).into())?; 
-        if ttype != MatchType::Standard {
-            bail!(ErrorKind::UnsupportedValue(ttype_raw as u64, stringify!(MatchType)));
+        let ttype = MatchType::from_u16(ttype_raw).ok_or::<Error>(
+            ErrorKind::UnknownValue(ttype_raw as u64, stringify!(MatchType)).into(),
+        )?;
+        if ttype != MatchType::OXM {
+            bail!(ErrorKind::UnsupportedValue(
+                ttype_raw as u64,
+                stringify!(MatchType)
+            ));
         }
 
         let length = cursor.read_u16::<BigEndian>().unwrap();
 
         let mut bytes_remaining = length as usize - MATCH_LENGTH;
         while bytes_remaining > 0 {
-
             let tlv_header_raw = cursor.read_u32::<BigEndian>().unwrap();
             let tlv_header = OxmTlvHeader(tlv_header_raw);
-            let tlv_slice = &bytes[cursor.position() as usize..cursor.position() as usize + tlv_header.get_length() as usize];
+            let tlv_slice = &bytes[cursor.position() as usize
+                                       ..cursor.position() as usize
+                                           + tlv_header.get_length() as usize];
 
             let tlv_match = TlvMatch::try_from(tlv_header, &tlv_slice[..])?;
             // ad to vector
 
             // count down by bytes read
-            cursor.seek(SeekFrom::Current(tlv_match.tlv_header.get_length() as i64)).unwrap();
+            cursor
+                .seek(SeekFrom::Current(tlv_match.tlv_header.get_length() as i64))
+                .unwrap();
             bytes_remaining -= tlv_match.tlv_header.get_length() as usize;
             matches.push(tlv_match);
         }
 
-        Ok(Match{
+        Ok(Match {
             ttype: ttype,
-            length: length, 
+            length: length,
             matches: matches,
         })
     }
 }
 
-impl Into<Vec<u8>> for Match{
+impl Into<Vec<u8>> for Match {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.ttype.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.ttype.to_u16().unwrap())
+            .unwrap();
         res.write_u16::<BigEndian>(self.length).unwrap();
         for mmatch in self.matches {
             res.extend_from_slice(&Into::<Vec<u8>>::into(mmatch)[..]);
         }
-        let pad_bytes_count = (self.length + 7)/8*8 - self.length;
+        let pad_bytes_count = (self.length + 7) / 8 * 8 - self.length;
         for _ in 0..pad_bytes_count {
             res.write_u8(0).unwrap();
         }
@@ -115,9 +123,9 @@ impl Into<Vec<u8>> for Match{
 #[derive(Primitive, PartialEq, Debug, Clone)]
 enum MatchType {
     /// Deprecated.
-    Standard = 0, 
-    /// OpenFlow Extensible Match 
-    OXM = 1, 
+    Standard = 0,
+    /// OpenFlow Extensible Match
+    OXM = 1,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -132,138 +140,115 @@ impl TlvMatch {
 
         //check if class is supported
         match OxmClass::from_u32(tlv_header.get_oxm_class()) {
-            Some(cls) => (),
-            None => bail!(ErrorKind::UnknownValue(tlv_header.get_oxm_class() as u64, stringify!(OxmClass))),
+            Some(_) => (),
+            None => bail!(ErrorKind::UnknownValue(
+                tlv_header.get_oxm_class() as u64,
+                stringify!(OxmClass)
+            )),
         }
 
         // read match
-        let match_fields = OfbMatchFields::from_u32(tlv_header.get_oxm_field())
-            .ok_or::<Error>(ErrorKind::UnknownValue(tlv_header.get_oxm_field() as u64, stringify!(OfbMatchFields)).into())?;
+        let match_fields = OfbMatchFields::from_u32(tlv_header.get_oxm_field()).ok_or::<Error>(
+            ErrorKind::UnknownValue(
+                tlv_header.get_oxm_field() as u64,
+                stringify!(OfbMatchFields),
+            ).into(),
+        )?;
         let payload = match match_fields {
-            OfbMatchFields::InPort =>{
-                MatchPayload::InPort(PayloadInPort::try_from(match_slice)?)
-            },
-            OfbMatchFields::InPhyPort =>{
+            OfbMatchFields::InPort => MatchPayload::InPort(PayloadInPort::try_from(match_slice)?),
+            OfbMatchFields::InPhyPort => {
                 MatchPayload::InPhyPort(PayloadInPhyPort::try_from(match_slice)?)
-            },
-            OfbMatchFields::Metadata =>{
+            }
+            OfbMatchFields::Metadata => {
                 MatchPayload::Metadata(PayloadMetadata::try_from(match_slice)?)
-            },
-            OfbMatchFields::EthDst =>{
-                MatchPayload::EthDst(PayloadEthDst::try_from(match_slice)?)
-            },
-            OfbMatchFields::EthSrc =>{
-                MatchPayload::EthSrc(PayloadEthSrc::try_from(match_slice)?)
-            },
-            OfbMatchFields::EthType =>{
+            }
+            OfbMatchFields::EthDst => MatchPayload::EthDst(PayloadEthDst::try_from(match_slice)?),
+            OfbMatchFields::EthSrc => MatchPayload::EthSrc(PayloadEthSrc::try_from(match_slice)?),
+            OfbMatchFields::EthType => {
                 MatchPayload::EthType(PayloadEthType::try_from(match_slice)?)
-            },
-            OfbMatchFields::VlanVid =>{
+            }
+            OfbMatchFields::VlanVid => {
                 MatchPayload::VlanVId(PayloadVlanVId::try_from(match_slice)?)
-            },
-            OfbMatchFields::VlanPcp =>{ 
+            }
+            OfbMatchFields::VlanPcp => {
                 MatchPayload::VlanPcp(PayloadVlanPcp::try_from(match_slice)?)
-            },
-            OfbMatchFields::IpDscp =>{
-                MatchPayload::IpDscp(PayloadIpDscp::try_from(match_slice)?)
-            },
-            OfbMatchFields::IpEcn =>{
-                MatchPayload::IpEcn(PayloadIpEcn::try_from(match_slice)?)
-            },
-            OfbMatchFields::IpProto =>{
+            }
+            OfbMatchFields::IpDscp => MatchPayload::IpDscp(PayloadIpDscp::try_from(match_slice)?),
+            OfbMatchFields::IpEcn => MatchPayload::IpEcn(PayloadIpEcn::try_from(match_slice)?),
+            OfbMatchFields::IpProto => {
                 MatchPayload::IpProto(PayloadIpProto::try_from(match_slice)?)
-            },
-            OfbMatchFields::IPv4Src =>{
+            }
+            OfbMatchFields::IPv4Src => {
                 MatchPayload::IPv4Src(PayloadIPv4Src::try_from(match_slice)?)
-            },
-            OfbMatchFields::IPv4Dst =>{
+            }
+            OfbMatchFields::IPv4Dst => {
                 MatchPayload::IPv4Dst(PayloadIPv4Dst::try_from(match_slice)?)
-            },
-            OfbMatchFields::TcpSrc =>{
-                MatchPayload::TcpSrc(PayloadTcpSrc::try_from(match_slice)?)
-            },
-            OfbMatchFields::TcpDst =>{
-                MatchPayload::TcpDst(PayloadTcpDst::try_from(match_slice)?)
-            },
-            OfbMatchFields::UdpSrc =>{
-                MatchPayload::UdpSrc(PayloadUdpSrc::try_from(match_slice)?)
-            },
-            OfbMatchFields::UdpDst =>{
-                MatchPayload::UdpDst(PayloadUdpDst::try_from(match_slice)?)
-            },
-            OfbMatchFields::SctpSrc =>{
+            }
+            OfbMatchFields::TcpSrc => MatchPayload::TcpSrc(PayloadTcpSrc::try_from(match_slice)?),
+            OfbMatchFields::TcpDst => MatchPayload::TcpDst(PayloadTcpDst::try_from(match_slice)?),
+            OfbMatchFields::UdpSrc => MatchPayload::UdpSrc(PayloadUdpSrc::try_from(match_slice)?),
+            OfbMatchFields::UdpDst => MatchPayload::UdpDst(PayloadUdpDst::try_from(match_slice)?),
+            OfbMatchFields::SctpSrc => {
                 MatchPayload::SctpSrc(PayloadSctpSrc::try_from(match_slice)?)
-            },
-            OfbMatchFields::SctpDst =>{
+            }
+            OfbMatchFields::SctpDst => {
                 MatchPayload::SctpDst(PayloadSctpDst::try_from(match_slice)?)
-            },
-            OfbMatchFields::IcmpV4TYype =>{
+            }
+            OfbMatchFields::IcmpV4TYype => {
                 MatchPayload::IcmpV4TYype(PayloadIcmpV4Type::try_from(match_slice)?)
-            },
-            OfbMatchFields::IcmpV4Code =>{
+            }
+            OfbMatchFields::IcmpV4Code => {
                 MatchPayload::IcmpV4Code(PayloadIcmpV4Code::try_from(match_slice)?)
-            },
-            OfbMatchFields::ArpOp =>{
-                MatchPayload::ArpOp(PayloadArpOp::try_from(match_slice)?)
-            },
-            OfbMatchFields::ArpSpa =>{
-                MatchPayload::ArpSpa(PayloadArpSpa::try_from(match_slice)?)
-            },
-            OfbMatchFields::ArpTpa =>{
-                MatchPayload::ArpTpa(PayloadArpTpa::try_from(match_slice)?)
-            },
-            OfbMatchFields::ArpSha =>{
-                MatchPayload::ArpSha(PayloadArpSha::try_from(match_slice)?)
-            },
-            OfbMatchFields::ArpTha =>{
-                MatchPayload::ArpTha(PayloadArpTha::try_from(match_slice)?)
-            },
-            OfbMatchFields::IPv6Src =>{
+            }
+            OfbMatchFields::ArpOp => MatchPayload::ArpOp(PayloadArpOp::try_from(match_slice)?),
+            OfbMatchFields::ArpSpa => MatchPayload::ArpSpa(PayloadArpSpa::try_from(match_slice)?),
+            OfbMatchFields::ArpTpa => MatchPayload::ArpTpa(PayloadArpTpa::try_from(match_slice)?),
+            OfbMatchFields::ArpSha => MatchPayload::ArpSha(PayloadArpSha::try_from(match_slice)?),
+            OfbMatchFields::ArpTha => MatchPayload::ArpTha(PayloadArpTha::try_from(match_slice)?),
+            OfbMatchFields::IPv6Src => {
                 MatchPayload::IPv6Src(PayloadIPv6Src::try_from(match_slice)?)
-            },
-            OfbMatchFields::IPv6Dst =>{
+            }
+            OfbMatchFields::IPv6Dst => {
                 MatchPayload::IPv6Dst(PayloadIPv6Dst::try_from(match_slice)?)
-            },
-            OfbMatchFields::IPv6FLabel =>{
+            }
+            OfbMatchFields::IPv6FLabel => {
                 MatchPayload::IPv6FLabel(PayloadIPv6FLabel::try_from(match_slice)?)
-            },
-            OfbMatchFields::IcmpV6Type =>{
+            }
+            OfbMatchFields::IcmpV6Type => {
                 MatchPayload::IcmpV6Type(PayloadIcmpV6Type::try_from(match_slice)?)
-            },
-            OfbMatchFields::IcmpV6Code =>{
+            }
+            OfbMatchFields::IcmpV6Code => {
                 MatchPayload::IcmpV6Code(PayloadIcmpV6Code::try_from(match_slice)?)
-            },
-            OfbMatchFields::IPv6NdTarget =>{
+            }
+            OfbMatchFields::IPv6NdTarget => {
                 MatchPayload::IPv6NdTarget(PayloadIPv6NdTarget::try_from(match_slice)?)
-            },
-            OfbMatchFields::IPv6NdSll =>{
+            }
+            OfbMatchFields::IPv6NdSll => {
                 MatchPayload::IPv6NdSll(PayloadIPv6NdSll::try_from(match_slice)?)
-            },
-            OfbMatchFields::IPv6NdTll =>{
+            }
+            OfbMatchFields::IPv6NdTll => {
                 MatchPayload::IPv6NdTll(PayloadIPv6NdTll::try_from(match_slice)?)
-            },
-            OfbMatchFields::MplsLabel =>{
+            }
+            OfbMatchFields::MplsLabel => {
                 MatchPayload::MplsLabel(PayloadMplsLabel::try_from(match_slice)?)
-            },
-            OfbMatchFields::MplsTc =>{
-                MatchPayload::MplsTc(PayloadMplsTc::try_from(match_slice)?)
-            },
-            OfbMatchFields::MplsBos =>{
+            }
+            OfbMatchFields::MplsTc => MatchPayload::MplsTc(PayloadMplsTc::try_from(match_slice)?),
+            OfbMatchFields::MplsBos => {
                 MatchPayload::MplsBos(PayloadMplsBos::try_from(match_slice)?)
-            },
-            OfbMatchFields::PbbISid =>{
+            }
+            OfbMatchFields::PbbISid => {
                 MatchPayload::PbbISid(PayloadPbbISid::try_from(match_slice)?)
-            },
-            OfbMatchFields::TunnelId =>{
+            }
+            OfbMatchFields::TunnelId => {
                 MatchPayload::TunnelId(PayloadTunnelId::try_from(match_slice)?)
-            },
+            }
             OfbMatchFields::IPv6ExtHdr => {
                 MatchPayload::IPv6ExtHdr(PayloadIPv6ExtHdr::try_from(match_slice)?)
-            },
+            }
         };
-        
+
         // create match
-        let tlv_match = TlvMatch{
+        let tlv_match = TlvMatch {
             tlv_header: tlv_header,
             payload: payload,
         };
@@ -271,7 +256,7 @@ impl TlvMatch {
     }
 }
 
-impl Into<Vec<u8>> for TlvMatch{
+impl Into<Vec<u8>> for TlvMatch {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
         res.write_u32::<BigEndian>(self.tlv_header.0).unwrap();
@@ -291,13 +276,13 @@ bitfield!{
     pub get_oxm_class, set_oxm_class: 31, 16;
 }
 
-impl Clone for OxmTlvHeader{
+impl Clone for OxmTlvHeader {
     fn clone(&self) -> Self {
         OxmTlvHeader(self.0.clone())
     }
 }
 
-impl ::std::cmp::PartialEq for OxmTlvHeader{
+impl ::std::cmp::PartialEq for OxmTlvHeader {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -310,186 +295,186 @@ impl ::std::cmp::PartialEq for OxmTlvHeader{
 #[derive(Primitive, PartialEq, Debug, Clone)]
 enum OxmClass {
     /// Backward compatibility with NXM
-    XmcNxm0 = 0x0000, 
+    XmcNxm0 = 0x0000,
     /// Backward compatibility with NXM
-    XmcNxm1 = 0x0001, 
+    XmcNxm1 = 0x0001,
     /// Basic class for OpenFlow
     XmcOpenFlowBasic = 0x8000,
     /// Experimenter class
-    XmcExperimenter = 0xFFFF, 
+    XmcExperimenter = 0xFFFF,
 }
 
 #[derive(Primitive, PartialEq, Debug, Clone)]
 enum OfbMatchFields {
-    /// Switch input port. 
-    InPort = 0, 
-    /// Switch physical input port. 
+    /// Switch input port.
+    InPort = 0,
+    /// Switch physical input port.
     InPhyPort = 1,
-    /// Metadata passed between tables. 
+    /// Metadata passed between tables.
     Metadata = 2,
-    /// Ethernet destination address. 
+    /// Ethernet destination address.
     EthDst = 3,
-    /// Ethernet source address. 
+    /// Ethernet source address.
     EthSrc = 4,
-    /// Ethernet frame type. 
+    /// Ethernet frame type.
     EthType = 5,
-    /// VLAN id. 
+    /// VLAN id.
     VlanVid = 6,
-    /// VLAN priority. 
+    /// VLAN priority.
     VlanPcp = 7,
-    /// IP DSCP (6 bits in ToS field). 
+    /// IP DSCP (6 bits in ToS field).
     IpDscp = 8,
-    /// IP ECN (2 bits in ToS field). 
-    IpEcn = 9, 
-    /// IP protocol. 
-    IpProto = 10, 
-    /// IPv4 source address. 
-    IPv4Src = 11, 
-    /// IPv4 destination address. 
-    IPv4Dst = 12, 
-    /// TCP source port. 
-    TcpSrc = 13, 
-    /// TCP destination port. 
-    TcpDst = 14, 
-    /// UDP source port. 
-    UdpSrc = 15, 
-    /// UDP destination port. 
-    UdpDst = 16, 
-    /// SCTP source port. 
-    SctpSrc = 17, 
-    /// SCTP destination port. 
-    SctpDst = 18, 
-    /// ICMP type. 
-    IcmpV4TYype = 19, 
-    /// ICMP code. 
-    IcmpV4Code = 20, 
-    /// ARP opcode. 
-    ArpOp = 21, 
-    /// ARP source IPv4 address. 
-    ArpSpa = 22, 
-    /// ARP target IPv4 address. 
-    ArpTpa = 23, 
-    /// ARP source hardware address. 
-    ArpSha = 24, 
-    /// ARP target hardware address. 
-    ArpTha = 25, 
-    /// IPv6 source address. 
-    IPv6Src = 26, 
-    /// IPv6 destination address. 
-    IPv6Dst = 27, 
-    /// IPv6 Flow Label 
-    IPv6FLabel = 28, 
-    /// ICMPv6 type. 
-    IcmpV6Type = 29, 
-    /// ICMPv6 code. 
-    IcmpV6Code = 30, 
-    /// Target address for ND. 
-    IPv6NdTarget = 31, 
-    /// Source link-layer for ND. 
-    IPv6NdSll = 32, 
-    /// Target link-layer for ND. 
-    IPv6NdTll = 33, 
-    /// MPLS label. 
-    MplsLabel = 34, 
-    /// MPLS TC. 
-    MplsTc = 35, 
-    /// MPLS BoS bit. 
-    MplsBos = 36, 
-    /// PBB I-SID. 
-    PbbISid = 37, 
-    /// Logical Port Metadata. 
-    TunnelId = 38, 
+    /// IP ECN (2 bits in ToS field).
+    IpEcn = 9,
+    /// IP protocol.
+    IpProto = 10,
+    /// IPv4 source address.
+    IPv4Src = 11,
+    /// IPv4 destination address.
+    IPv4Dst = 12,
+    /// TCP source port.
+    TcpSrc = 13,
+    /// TCP destination port.
+    TcpDst = 14,
+    /// UDP source port.
+    UdpSrc = 15,
+    /// UDP destination port.
+    UdpDst = 16,
+    /// SCTP source port.
+    SctpSrc = 17,
+    /// SCTP destination port.
+    SctpDst = 18,
+    /// ICMP type.
+    IcmpV4TYype = 19,
+    /// ICMP code.
+    IcmpV4Code = 20,
+    /// ARP opcode.
+    ArpOp = 21,
+    /// ARP source IPv4 address.
+    ArpSpa = 22,
+    /// ARP target IPv4 address.
+    ArpTpa = 23,
+    /// ARP source hardware address.
+    ArpSha = 24,
+    /// ARP target hardware address.
+    ArpTha = 25,
+    /// IPv6 source address.
+    IPv6Src = 26,
+    /// IPv6 destination address.
+    IPv6Dst = 27,
+    /// IPv6 Flow Label
+    IPv6FLabel = 28,
+    /// ICMPv6 type.
+    IcmpV6Type = 29,
+    /// ICMPv6 code.
+    IcmpV6Code = 30,
+    /// Target address for ND.
+    IPv6NdTarget = 31,
+    /// Source link-layer for ND.
+    IPv6NdSll = 32,
+    /// Target link-layer for ND.
+    IPv6NdTll = 33,
+    /// MPLS label.
+    MplsLabel = 34,
+    /// MPLS TC.
+    MplsTc = 35,
+    /// MPLS BoS bit.
+    MplsBos = 36,
+    /// PBB I-SID.
+    PbbISid = 37,
+    /// Logical Port Metadata.
+    TunnelId = 38,
     /// IPv6 Extension Header pseudo-field
     IPv6ExtHdr = 39,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum MatchPayload {
-    /// Switch input port. 
-    InPort(PayloadInPort), 
-    /// Switch physical input port. 
+    /// Switch input port.
+    InPort(PayloadInPort),
+    /// Switch physical input port.
     InPhyPort(PayloadInPhyPort),
-    /// Metadata passed between tables. 
+    /// Metadata passed between tables.
     Metadata(PayloadMetadata),
-    /// Ethernet destination address. 
+    /// Ethernet destination address.
     EthDst(PayloadEthDst),
-    /// Ethernet source address. 
+    /// Ethernet source address.
     EthSrc(PayloadEthSrc),
-    /// Ethernet frame type. 
+    /// Ethernet frame type.
     EthType(PayloadEthType),
-    /// VLAN id. 
+    /// VLAN id.
     VlanVId(PayloadVlanVId),
-    /// VLAN priority. 
+    /// VLAN priority.
     VlanPcp(PayloadVlanPcp),
-    /// IP DSCP (6 bits in ToS field). 
+    /// IP DSCP (6 bits in ToS field).
     IpDscp(PayloadIpDscp),
-    /// IP ECN (2 bits in ToS field). 
-    IpEcn(PayloadIpEcn), 
-    /// IP protocol. 
-    IpProto(PayloadIpProto), 
-    /// IPv4 source address. 
-    IPv4Src(PayloadIPv4Src), 
-    /// IPv4 destination address. 
-    IPv4Dst(PayloadIPv4Dst), 
-    /// TCP source port. 
-    TcpSrc(PayloadTcpSrc), 
-    /// TCP destination port. 
-    TcpDst(PayloadTcpDst), 
-    /// UDP source port. 
-    UdpSrc(PayloadUdpSrc), 
-    /// UDP destination port. 
-    UdpDst(PayloadUdpDst), 
-    /// SCTP source port. 
-    SctpSrc(PayloadSctpSrc), 
-    /// SCTP destination port. 
-    SctpDst(PayloadSctpDst), 
-    /// ICMP type. 
-    IcmpV4TYype(PayloadIcmpV4Type), 
-    /// ICMP code. 
-    IcmpV4Code(PayloadIcmpV4Code), 
-    /// ARP opcode. 
-    ArpOp(PayloadArpOp), 
-    /// ARP source IPv4 address. 
-    ArpSpa(PayloadArpSpa), 
-    /// ARP target IPv4 address. 
-    ArpTpa(PayloadArpTpa), 
-    /// ARP source hardware address. 
-    ArpSha(PayloadArpSha), 
-    /// ARP target hardware address. 
-    ArpTha(PayloadArpTha), 
-    /// IPv6 source address. 
-    IPv6Src(PayloadIPv6Src), 
-    /// IPv6 destination address. 
-    IPv6Dst(PayloadIPv6Dst), 
-    /// IPv6 Flow Label 
-    IPv6FLabel(PayloadIPv6FLabel), 
-    /// ICMPv6 type. 
-    IcmpV6Type(PayloadIcmpV6Type), 
-    /// ICMPv6 code. 
-    IcmpV6Code(PayloadIcmpV6Code), 
-    /// Target address for ND. 
-    IPv6NdTarget(PayloadIPv6NdTarget), 
-    /// Source link-layer for ND. 
-    IPv6NdSll(PayloadIPv6NdSll), 
-    /// Target link-layer for ND. 
-    IPv6NdTll(PayloadIPv6NdTll), 
-    /// MPLS label. 
-    MplsLabel(PayloadMplsLabel), 
-    /// MPLS TC. 
-    MplsTc(PayloadMplsTc), 
-    /// MPLS BoS bit. 
-    MplsBos(PayloadMplsBos), 
-    /// PBB I-SID. 
-    PbbISid(PayloadPbbISid), 
-    /// Logical Port Metadata. 
-    TunnelId(PayloadTunnelId), 
+    /// IP ECN (2 bits in ToS field).
+    IpEcn(PayloadIpEcn),
+    /// IP protocol.
+    IpProto(PayloadIpProto),
+    /// IPv4 source address.
+    IPv4Src(PayloadIPv4Src),
+    /// IPv4 destination address.
+    IPv4Dst(PayloadIPv4Dst),
+    /// TCP source port.
+    TcpSrc(PayloadTcpSrc),
+    /// TCP destination port.
+    TcpDst(PayloadTcpDst),
+    /// UDP source port.
+    UdpSrc(PayloadUdpSrc),
+    /// UDP destination port.
+    UdpDst(PayloadUdpDst),
+    /// SCTP source port.
+    SctpSrc(PayloadSctpSrc),
+    /// SCTP destination port.
+    SctpDst(PayloadSctpDst),
+    /// ICMP type.
+    IcmpV4TYype(PayloadIcmpV4Type),
+    /// ICMP code.
+    IcmpV4Code(PayloadIcmpV4Code),
+    /// ARP opcode.
+    ArpOp(PayloadArpOp),
+    /// ARP source IPv4 address.
+    ArpSpa(PayloadArpSpa),
+    /// ARP target IPv4 address.
+    ArpTpa(PayloadArpTpa),
+    /// ARP source hardware address.
+    ArpSha(PayloadArpSha),
+    /// ARP target hardware address.
+    ArpTha(PayloadArpTha),
+    /// IPv6 source address.
+    IPv6Src(PayloadIPv6Src),
+    /// IPv6 destination address.
+    IPv6Dst(PayloadIPv6Dst),
+    /// IPv6 Flow Label
+    IPv6FLabel(PayloadIPv6FLabel),
+    /// ICMPv6 type.
+    IcmpV6Type(PayloadIcmpV6Type),
+    /// ICMPv6 code.
+    IcmpV6Code(PayloadIcmpV6Code),
+    /// Target address for ND.
+    IPv6NdTarget(PayloadIPv6NdTarget),
+    /// Source link-layer for ND.
+    IPv6NdSll(PayloadIPv6NdSll),
+    /// Target link-layer for ND.
+    IPv6NdTll(PayloadIPv6NdTll),
+    /// MPLS label.
+    MplsLabel(PayloadMplsLabel),
+    /// MPLS TC.
+    MplsTc(PayloadMplsTc),
+    /// MPLS BoS bit.
+    MplsBos(PayloadMplsBos),
+    /// PBB I-SID.
+    PbbISid(PayloadPbbISid),
+    /// Logical Port Metadata.
+    TunnelId(PayloadTunnelId),
     /// IPv6 Extension Header pseudo-field
     IPv6ExtHdr(PayloadIPv6ExtHdr),
 }
 
-impl Into<Vec<u8>> for MatchPayload{
+impl Into<Vec<u8>> for MatchPayload {
     fn into(self) -> Vec<u8> {
-        match self{
+        match self {
             MatchPayload::InPort(payload) => payload.into(),
             MatchPayload::InPhyPort(payload) => payload.into(),
             MatchPayload::Metadata(payload) => payload.into(),
@@ -539,11 +524,11 @@ pub struct PayloadInPort {
     ingress_port: PortNumber,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadInPort{
+impl<'a> TryFrom<&'a [u8]> for PayloadInPort {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadInPort{
+        Ok(PayloadInPort {
             ingress_port: PortNumber::try_from(cursor.read_u32::<BigEndian>().unwrap())?,
         })
     }
@@ -552,7 +537,8 @@ impl<'a> TryFrom<&'a [u8]> for PayloadInPort{
 impl Into<Vec<u8>> for PayloadInPort {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u32::<BigEndian>(self.ingress_port.into()).unwrap();
+        res.write_u32::<BigEndian>(self.ingress_port.into())
+            .unwrap();
         res
     }
 }
@@ -562,11 +548,11 @@ pub struct PayloadInPhyPort {
     phy_port: u32,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadInPhyPort{
+impl<'a> TryFrom<&'a [u8]> for PayloadInPhyPort {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadInPhyPort{
+        Ok(PayloadInPhyPort {
             phy_port: cursor.read_u32::<BigEndian>().unwrap(),
         })
     }
@@ -585,11 +571,11 @@ pub struct PayloadMetadata {
     metadata: u64,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadMetadata{
+impl<'a> TryFrom<&'a [u8]> for PayloadMetadata {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadMetadata{
+        Ok(PayloadMetadata {
             metadata: cursor.read_u64::<BigEndian>().unwrap(),
         })
     }
@@ -608,10 +594,10 @@ pub struct PayloadEthDst {
     eth_dst: hw_addr::EthernetAddress,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadEthDst{
+impl<'a> TryFrom<&'a [u8]> for PayloadEthDst {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadEthDst{
+        Ok(PayloadEthDst {
             eth_dst: hw_addr::from_slice_eth(bytes)?,
         })
     }
@@ -630,10 +616,10 @@ pub struct PayloadEthSrc {
     eth_src: hw_addr::EthernetAddress,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadEthSrc{
+impl<'a> TryFrom<&'a [u8]> for PayloadEthSrc {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadEthSrc{
+        Ok(PayloadEthSrc {
             eth_src: hw_addr::from_slice_eth(bytes)?,
         })
     }
@@ -652,14 +638,15 @@ pub struct PayloadEthType {
     ttype: EtherType,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadEthType{
+impl<'a> TryFrom<&'a [u8]> for PayloadEthType {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_ttype = cursor.read_u16::<BigEndian>().unwrap();
-        Ok(PayloadEthType{
-            ttype: EtherType::from_u16(raw_ttype)
-                .ok_or::<Error>(ErrorKind::UnknownValue(raw_ttype as u64, stringify!(EtherType)).into())?,
+        Ok(PayloadEthType {
+            ttype: EtherType::from_u16(raw_ttype).ok_or::<Error>(
+                ErrorKind::UnknownValue(raw_ttype as u64, stringify!(EtherType)).into(),
+            )?,
         })
     }
 }
@@ -667,7 +654,8 @@ impl<'a> TryFrom<&'a [u8]> for PayloadEthType{
 impl Into<Vec<u8>> for PayloadEthType {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.ttype.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.ttype.to_u16().unwrap())
+            .unwrap();
         res
     }
 }
@@ -733,11 +721,11 @@ pub struct PayloadVlanVId {
     vlan_id: u16, // 12+1 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadVlanVId{
+impl<'a> TryFrom<&'a [u8]> for PayloadVlanVId {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadVlanVId{
+        Ok(PayloadVlanVId {
             vlan_id: cursor.read_u16::<BigEndian>().unwrap(),
         })
     }
@@ -756,11 +744,11 @@ pub struct PayloadVlanPcp {
     vlan_pcp: u8, // 3 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadVlanPcp{
+impl<'a> TryFrom<&'a [u8]> for PayloadVlanPcp {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadVlanPcp{
+        Ok(PayloadVlanPcp {
             vlan_pcp: cursor.read_u8().unwrap(),
         })
     }
@@ -779,11 +767,11 @@ pub struct PayloadIpDscp {
     ip_dscp: u8, // 6 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIpDscp{
+impl<'a> TryFrom<&'a [u8]> for PayloadIpDscp {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadIpDscp{
+        Ok(PayloadIpDscp {
             ip_dscp: cursor.read_u8().unwrap(),
         })
     }
@@ -802,11 +790,11 @@ pub struct PayloadIpEcn {
     ip_enc: u8, // 2 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIpEcn{
+impl<'a> TryFrom<&'a [u8]> for PayloadIpEcn {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadIpEcn{
+        Ok(PayloadIpEcn {
             ip_enc: cursor.read_u8().unwrap(),
         })
     }
@@ -825,14 +813,15 @@ pub struct PayloadIpProto {
     ip_proto: IpProto,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIpProto{
+impl<'a> TryFrom<&'a [u8]> for PayloadIpProto {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let ip_proto_raw = cursor.read_u16::<BigEndian>().unwrap();
-        Ok(PayloadIpProto{
-            ip_proto: IpProto::from_u16(ip_proto_raw)
-                .ok_or::<Error>(ErrorKind::UnknownValue(ip_proto_raw as u64, stringify!(IpProto)).into())?,
+        Ok(PayloadIpProto {
+            ip_proto: IpProto::from_u16(ip_proto_raw).ok_or::<Error>(
+                ErrorKind::UnknownValue(ip_proto_raw as u64, stringify!(IpProto)).into(),
+            )?,
         })
     }
 }
@@ -1005,10 +994,10 @@ pub struct PayloadIPv4Src {
     ipv4_src: hw_addr::IPv4Address,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv4Src{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv4Src {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadIPv4Src{
+        Ok(PayloadIPv4Src {
             ipv4_src: hw_addr::from_slice_v4(bytes)?,
         })
     }
@@ -1027,10 +1016,10 @@ pub struct PayloadIPv4Dst {
     ipv4_dst: hw_addr::IPv4Address,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv4Dst{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv4Dst {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadIPv4Dst{
+        Ok(PayloadIPv4Dst {
             ipv4_dst: hw_addr::from_slice_v4(bytes)?,
         })
     }
@@ -1049,11 +1038,11 @@ pub struct PayloadTcpSrc {
     src_port: u16,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadTcpSrc{
+impl<'a> TryFrom<&'a [u8]> for PayloadTcpSrc {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadTcpSrc{
+        Ok(PayloadTcpSrc {
             src_port: cursor.read_u16::<BigEndian>().unwrap(),
         })
     }
@@ -1072,11 +1061,11 @@ pub struct PayloadTcpDst {
     dst_port: u16,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadTcpDst{
+impl<'a> TryFrom<&'a [u8]> for PayloadTcpDst {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadTcpDst{
+        Ok(PayloadTcpDst {
             dst_port: cursor.read_u16::<BigEndian>().unwrap(),
         })
     }
@@ -1095,11 +1084,11 @@ pub struct PayloadUdpSrc {
     src_port: u16,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadUdpSrc{
+impl<'a> TryFrom<&'a [u8]> for PayloadUdpSrc {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadUdpSrc{
+        Ok(PayloadUdpSrc {
             src_port: cursor.read_u16::<BigEndian>().unwrap(),
         })
     }
@@ -1118,11 +1107,11 @@ pub struct PayloadUdpDst {
     dst_port: u16,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadUdpDst{
+impl<'a> TryFrom<&'a [u8]> for PayloadUdpDst {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadUdpDst{
+        Ok(PayloadUdpDst {
             dst_port: cursor.read_u16::<BigEndian>().unwrap(),
         })
     }
@@ -1141,11 +1130,11 @@ pub struct PayloadSctpSrc {
     src_port: u16,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadSctpSrc{
+impl<'a> TryFrom<&'a [u8]> for PayloadSctpSrc {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadSctpSrc{
+        Ok(PayloadSctpSrc {
             src_port: cursor.read_u16::<BigEndian>().unwrap(),
         })
     }
@@ -1164,11 +1153,11 @@ pub struct PayloadSctpDst {
     dst_port: u16,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadSctpDst{
+impl<'a> TryFrom<&'a [u8]> for PayloadSctpDst {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadSctpDst{
+        Ok(PayloadSctpDst {
             dst_port: cursor.read_u16::<BigEndian>().unwrap(),
         })
     }
@@ -1187,14 +1176,15 @@ pub struct PayloadIcmpV4Type {
     ttype: IcmpType,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV4Type{
+impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV4Type {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_ttype = cursor.read_u8().unwrap();
-        Ok(PayloadIcmpV4Type{
-            ttype: IcmpType::from_u8(raw_ttype)
-                .ok_or::<Error>(ErrorKind::UnknownValue(raw_ttype as u64, stringify!(IcmpType)).into())?,
+        Ok(PayloadIcmpV4Type {
+            ttype: IcmpType::from_u8(raw_ttype).ok_or::<Error>(
+                ErrorKind::UnknownValue(raw_ttype as u64, stringify!(IcmpType)).into(),
+            )?,
         })
     }
 }
@@ -1255,11 +1245,11 @@ pub struct PayloadIcmpV4Code {
     code: u8,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV4Code{
+impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV4Code {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadIcmpV4Code{
+        Ok(PayloadIcmpV4Code {
             code: cursor.read_u8().unwrap(),
         })
     }
@@ -1278,14 +1268,15 @@ pub struct PayloadArpOp {
     arp_op: ArpOp,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadArpOp{
+impl<'a> TryFrom<&'a [u8]> for PayloadArpOp {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_arp_op = cursor.read_u16::<BigEndian>().unwrap();
-        Ok(PayloadArpOp{
-            arp_op: ArpOp::from_u16(raw_arp_op)
-                .ok_or::<Error>(ErrorKind::UnknownValue(raw_arp_op as u64, stringify!(ArpOp)).into())?,
+        Ok(PayloadArpOp {
+            arp_op: ArpOp::from_u16(raw_arp_op).ok_or::<Error>(
+                ErrorKind::UnknownValue(raw_arp_op as u64, stringify!(ArpOp)).into(),
+            )?,
         })
     }
 }
@@ -1293,7 +1284,8 @@ impl<'a> TryFrom<&'a [u8]> for PayloadArpOp{
 impl Into<Vec<u8>> for PayloadArpOp {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
-        res.write_u16::<BigEndian>(self.arp_op.to_u16().unwrap()).unwrap();
+        res.write_u16::<BigEndian>(self.arp_op.to_u16().unwrap())
+            .unwrap();
         res
     }
 }
@@ -1335,10 +1327,10 @@ pub struct PayloadArpSpa {
     arp_spa: hw_addr::IPv4Address,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadArpSpa{
+impl<'a> TryFrom<&'a [u8]> for PayloadArpSpa {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadArpSpa{
+        Ok(PayloadArpSpa {
             arp_spa: hw_addr::from_slice_v4(&bytes[..])?,
         })
     }
@@ -1357,10 +1349,10 @@ pub struct PayloadArpTpa {
     arp_tpa: hw_addr::IPv4Address,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadArpTpa{
+impl<'a> TryFrom<&'a [u8]> for PayloadArpTpa {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadArpTpa{
+        Ok(PayloadArpTpa {
             arp_tpa: hw_addr::from_slice_v4(&bytes[..])?,
         })
     }
@@ -1379,10 +1371,10 @@ pub struct PayloadArpSha {
     arp_sha: hw_addr::EthernetAddress,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadArpSha{
+impl<'a> TryFrom<&'a [u8]> for PayloadArpSha {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadArpSha{
+        Ok(PayloadArpSha {
             arp_sha: hw_addr::from_slice_eth(&bytes[..])?,
         })
     }
@@ -1401,10 +1393,10 @@ pub struct PayloadArpTha {
     arp_tha: hw_addr::EthernetAddress,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadArpTha{
+impl<'a> TryFrom<&'a [u8]> for PayloadArpTha {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadArpTha{
+        Ok(PayloadArpTha {
             arp_tha: hw_addr::from_slice_eth(&bytes[..])?,
         })
     }
@@ -1423,10 +1415,10 @@ pub struct PayloadIPv6Src {
     ipv6_src: hw_addr::IPv6Address,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv6Src{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv6Src {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadIPv6Src{
+        Ok(PayloadIPv6Src {
             ipv6_src: hw_addr::from_slice_v6(&bytes[..])?,
         })
     }
@@ -1445,10 +1437,10 @@ pub struct PayloadIPv6Dst {
     ipv6_dst: hw_addr::IPv6Address,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv6Dst{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv6Dst {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadIPv6Dst{
+        Ok(PayloadIPv6Dst {
             ipv6_dst: hw_addr::from_slice_v6(&bytes[..])?,
         })
     }
@@ -1467,11 +1459,11 @@ pub struct PayloadIPv6FLabel {
     flabel: u32, // 20 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv6FLabel{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv6FLabel {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadIPv6FLabel{
+        Ok(PayloadIPv6FLabel {
             flabel: cursor.read_u32::<BigEndian>().unwrap(),
         })
     }
@@ -1490,14 +1482,15 @@ pub struct PayloadIcmpV6Type {
     ttype: IcmpV6Type,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV6Type{
+impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV6Type {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_ttype = cursor.read_u8().unwrap();
-        Ok(PayloadIcmpV6Type{
-            ttype: IcmpV6Type::from_u8(raw_ttype)
-                .ok_or::<Error>(ErrorKind::UnknownValue(raw_ttype as u64, stringify!(IcmpV6Type)).into())?,
+        Ok(PayloadIcmpV6Type {
+            ttype: IcmpV6Type::from_u8(raw_ttype).ok_or::<Error>(
+                ErrorKind::UnknownValue(raw_ttype as u64, stringify!(IcmpV6Type)).into(),
+            )?,
         })
     }
 }
@@ -1564,11 +1557,11 @@ pub struct PayloadIcmpV6Code {
     code: u8,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV6Code{
+impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV6Code {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadIcmpV6Code{
+        Ok(PayloadIcmpV6Code {
             code: cursor.read_u8().unwrap(),
         })
     }
@@ -1587,10 +1580,10 @@ pub struct PayloadIPv6NdTarget {
     target: hw_addr::IPv6Address,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdTarget{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdTarget {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadIPv6NdTarget{
+        Ok(PayloadIPv6NdTarget {
             target: hw_addr::from_slice_v6(&bytes[..])?,
         })
     }
@@ -1609,10 +1602,10 @@ pub struct PayloadIPv6NdSll {
     nd_sll: hw_addr::EthernetAddress,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdSll{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdSll {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadIPv6NdSll{
+        Ok(PayloadIPv6NdSll {
             nd_sll: hw_addr::from_slice_eth(&bytes[..])?,
         })
     }
@@ -1631,10 +1624,10 @@ pub struct PayloadIPv6NdTll {
     nd_tll: hw_addr::EthernetAddress,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdTll{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdTll {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
-        Ok(PayloadIPv6NdTll{
+        Ok(PayloadIPv6NdTll {
             nd_tll: hw_addr::from_slice_eth(&bytes[..])?,
         })
     }
@@ -1653,11 +1646,11 @@ pub struct PayloadMplsLabel {
     label: u32, // 20 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadMplsLabel{
+impl<'a> TryFrom<&'a [u8]> for PayloadMplsLabel {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadMplsLabel{
+        Ok(PayloadMplsLabel {
             label: cursor.read_u32::<BigEndian>().unwrap(),
         })
     }
@@ -1676,11 +1669,11 @@ pub struct PayloadMplsTc {
     tc: u8, // 3 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadMplsTc{
+impl<'a> TryFrom<&'a [u8]> for PayloadMplsTc {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadMplsTc{
+        Ok(PayloadMplsTc {
             tc: cursor.read_u8().unwrap(),
         })
     }
@@ -1699,11 +1692,11 @@ pub struct PayloadMplsBos {
     bos: u8, // 1 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadMplsBos{
+impl<'a> TryFrom<&'a [u8]> for PayloadMplsBos {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadMplsBos{
+        Ok(PayloadMplsBos {
             bos: cursor.read_u8().unwrap(),
         })
     }
@@ -1722,11 +1715,11 @@ pub struct PayloadPbbISid {
     i_sid: u32, // 24 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadPbbISid{
+impl<'a> TryFrom<&'a [u8]> for PayloadPbbISid {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadPbbISid{
+        Ok(PayloadPbbISid {
             i_sid: cursor.read_u32::<BigEndian>().unwrap(),
         })
     }
@@ -1745,11 +1738,11 @@ pub struct PayloadTunnelId {
     metadata: u64,
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadTunnelId{
+impl<'a> TryFrom<&'a [u8]> for PayloadTunnelId {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        Ok(PayloadTunnelId{
+        Ok(PayloadTunnelId {
             metadata: cursor.read_u64::<BigEndian>().unwrap(),
         })
     }
@@ -1768,12 +1761,12 @@ pub struct PayloadIPv6ExtHdr {
     ext_hdr_flags: IPv6ExtHdrFlags, // 9 bits
 }
 
-impl<'a> TryFrom<&'a [u8]> for PayloadIPv6ExtHdr{
+impl<'a> TryFrom<&'a [u8]> for PayloadIPv6ExtHdr {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         let raw_flags = cursor.read_u16::<BigEndian>().unwrap();
-        Ok(PayloadIPv6ExtHdr{
+        Ok(PayloadIPv6ExtHdr {
             ext_hdr_flags: IPv6ExtHdrFlags(raw_flags),
         })
     }
@@ -1812,13 +1805,13 @@ bitfield!{
     pub get_unseq, set_unseq: 9, 8;
 }
 
-impl Clone for IPv6ExtHdrFlags{
+impl Clone for IPv6ExtHdrFlags {
     fn clone(&self) -> Self {
         IPv6ExtHdrFlags(self.0.clone())
     }
 }
 
-impl ::std::cmp::PartialEq for IPv6ExtHdrFlags{
+impl ::std::cmp::PartialEq for IPv6ExtHdrFlags {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }

@@ -1,9 +1,9 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::{TryFrom, Into};
+use std::convert::{Into, TryFrom};
 use std::io::{Cursor, Seek, SeekFrom};
 
+use super::actions::ActionHeader;
 use super::ports::PortNumber;
-use super::actions::{ActionHeader};
 
 use super::super::err::*;
 
@@ -34,7 +34,8 @@ impl<'a> TryFrom<&'a [u8]> for PacketOut {
         let mut bytes_remaining = actions_len as usize;
         while bytes_remaining > 0 {
             let action_len = ActionHeader::read_len(&mut cursor)?;
-            let action_slice = &bytes[cursor.position() as usize..cursor.position() as usize + action_len];
+            let action_slice =
+                &bytes[cursor.position() as usize..cursor.position() as usize + action_len];
             let action = ActionHeader::try_from(action_slice)?;
             actions.push(action);
             bytes_remaining -= action_len;
@@ -43,7 +44,7 @@ impl<'a> TryFrom<&'a [u8]> for PacketOut {
 
         let data = Vec::from(&bytes[cursor.position() as usize..]);
 
-        Ok(PacketOut{
+        Ok(PacketOut {
             buffer_id: buffer_id,
             in_port: in_port,
             actions_len: actions_len,
@@ -53,7 +54,7 @@ impl<'a> TryFrom<&'a [u8]> for PacketOut {
     }
 }
 
-impl Into<Vec<u8>> for PacketOut{
+impl Into<Vec<u8>> for PacketOut {
     fn into(self) -> Vec<u8> {
         let mut vec = Vec::new();
         vec.write_u32::<BigEndian>(self.buffer_id).unwrap();
@@ -69,4 +70,3 @@ impl Into<Vec<u8>> for PacketOut{
         vec
     }
 }
-

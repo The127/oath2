@@ -56,7 +56,12 @@ where
             info!("Tcp connection from: {:?}.", stream.peer_addr());
             // start new connection to switch
             // give copy of tcp_s to inform handler of new messages
-            switch::start_switch_connection(stream, tcp_s.clone());
+            match switch::start_switch_connection(stream, tcp_s.clone()) {
+                Err(err) => {
+                    error!("{}", err);
+                }
+                _ => (),
+            }
         }
     }
 
