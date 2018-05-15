@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 error_chain!{
     types{
         Error, ErrorKind, ResultExt, Result;
@@ -15,6 +17,11 @@ error_chain!{
         InvalidSliceLength(expected: usize, actual: usize, ttype: &'static str) {
             description("Invalid slice length received."),
             display("Expected '{}' but got '{}' bytes for '{}'.", expected, actual, ttype),
+        }
+
+        CouldNotReadLength(access: usize, ttype: &'static str) {
+            description("Could not read length of a message part."),
+            display("Could not read length at '{}' of '{}'.", access, ttype),
         }
 
         UnknownValue(val: u64, ttype: &'static str) {
