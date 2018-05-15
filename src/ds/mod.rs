@@ -3,12 +3,13 @@ use num_traits::{FromPrimitive, ToPrimitive};
 use std::convert::{Into, TryFrom};
 use std::io::Cursor;
 
-use std::path;
 use super::err::*;
+use std::path;
 
+pub mod flow_match;
 pub mod hw_addr;
-pub mod ports;
 pub mod packet_queue;
+pub mod ports;
 
 /// defines an OpenFlow message
 /// header + payload
@@ -92,15 +93,24 @@ impl<'a> TryFrom<&'a [u8]> for Header {
         let mut cursor = Cursor::new(bytes);
 
         let version_raw = cursor.read_u8().chain_err(|| {
-            let err_msg = format!("Could not read header version!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            let err_msg = format!(
+                "Could not read header version!{}Cursor: {:?}",
+                path::MAIN_SEPARATOR,
+                cursor
+            );
             error!("{}", err_msg);
             err_msg
         })?;
-        let version = Version::from_u8(version_raw)
-            .ok_or::<Error>(ErrorKind::UnknownValue(version_raw as u64, stringify!(Version)).into())?;
+        let version = Version::from_u8(version_raw).ok_or::<Error>(
+            ErrorKind::UnknownValue(version_raw as u64, stringify!(Version)).into(),
+        )?;
 
         let ttype_raw = cursor.read_u8().chain_err(|| {
-            let err_msg = format!("Could not read header type!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            let err_msg = format!(
+                "Could not read header type!{}Cursor: {:?}",
+                path::MAIN_SEPARATOR,
+                cursor
+            );
             error!("{}", err_msg);
             err_msg
         })?;
@@ -112,12 +122,20 @@ impl<'a> TryFrom<&'a [u8]> for Header {
             version: version,
             ttype: ttype,
             length: cursor.read_u16::<BigEndian>().chain_err(|| {
-                let err_msg = format!("Could not read header length!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                let err_msg = format!(
+                    "Could not read header length!{}Cursor: {:?}",
+                    path::MAIN_SEPARATOR,
+                    cursor
+                );
                 error!("{}", err_msg);
                 err_msg
             })?,
             xid: cursor.read_u32::<BigEndian>().chain_err(|| {
-                let err_msg = format!("Could not read header xid!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                let err_msg = format!(
+                    "Could not read header xid!{}Cursor: {:?}",
+                    path::MAIN_SEPARATOR,
+                    cursor
+                );
                 error!("{}", err_msg);
                 err_msg
             })?,
@@ -282,7 +300,7 @@ pub enum OfPayload {
 impl OfPayload {
     pub fn generate_header(&self, xid: u32) -> Header {
         //create basic default header
-        let mut header = Header{
+        let mut header = Header {
             version: Version::V1_3,
             ttype: Type::Hello,
             length: HEADER_LENGTH as u16,
@@ -294,88 +312,88 @@ impl OfPayload {
             //OfPayload::Error,
             OfPayload::EchoRequest => {
                 header.ttype = Type::EchoRequest;
-            },
+            }
             OfPayload::EchoReply => {
                 header.ttype = Type::EchoReply;
-            },
+            }
             OfPayload::Experimenter => {
                 header.ttype = Type::Experimenter;
-            },
+            }
             OfPayload::FeaturesRequest => {
                 header.ttype = Type::FeaturesRequest;
-            },
+            }
             OfPayload::FeaturesReply => {
                 header.ttype = Type::FeaturesReply;
-            },
+            }
             OfPayload::GetConfigRequest => {
                 header.ttype = Type::GetConfigRequest;
-            },
+            }
             OfPayload::GetConfigReply => {
                 header.ttype = Type::GetConfigRequest;
-            },
+            }
             OfPayload::SetConfig => {
                 header.ttype = Type::SetConfig;
             }
             OfPayload::PacketIn => {
                 header.ttype = Type::PacketIn;
-            },
+            }
             OfPayload::FlowRemoved => {
                 header.ttype = Type::FlowRemoved;
-            },
+            }
             OfPayload::PortStatus => {
                 header.ttype = Type::PortStatus;
-            },
+            }
             OfPayload::PacketOut => {
                 header.ttype = Type::PacketOut;
-            },
+            }
             OfPayload::FlowMod => {
                 header.ttype = Type::FlowMod;
-            },
+            }
             OfPayload::GroupMod => {
                 header.ttype = Type::GroupMod;
-            },
+            }
             OfPayload::PortMod => {
                 header.ttype = Type::PortMod;
-            },
+            }
             OfPayload::TableMod => {
                 header.ttype = Type::TableMod;
-            },
+            }
             OfPayload::MultipartRequest => {
                 header.ttype = Type::MultipartRequest;
-            },
+            }
             OfPayload::MultipartReply => {
                 header.ttype = Type::MultipartReply;
-            },
+            }
             OfPayload::BarrierRequest => {
                 header.ttype = Type::BarrierRequest;
-            },
+            }
             OfPayload::BarrierReply => {
                 header.ttype = Type::BarrierReply;
-            },
+            }
             OfPayload::QueueGetConfigRequest => {
                 header.ttype = Type::QueueGetConfigRequest;
-            },
+            }
             OfPayload::QueueGetConfigReply => {
                 header.ttype = Type::QueueGetConfigReply;
-            },
+            }
             OfPayload::RoleRequest => {
                 header.ttype = Type::RoleRequest;
-            },
+            }
             OfPayload::RoleReply => {
                 header.ttype = Type::RoleReply;
-            },
+            }
             OfPayload::GetAsyncRequest => {
                 header.ttype = Type::GetAsyncRequest;
-            },
+            }
             OfPayload::GetAsyncReply => {
                 header.ttype = Type::GetAsyncReply;
-            },
+            }
             OfPayload::SetAsync => {
                 header.ttype = Type::SetAsync;
-            },
+            }
             OfPayload::MeterMod => {
                 header.ttype = Type::MeterMod;
-            },
+            }
             _ => panic!("not yet implemented header gen {:?}", self),
         }
         header
@@ -385,9 +403,9 @@ impl OfPayload {
 impl Into<Vec<u8>> for OfPayload {
     fn into(self) -> Vec<u8> {
         match self {
-            OfPayload::Hello => vec![],        // no body
-            OfPayload::EchoRequest => vec![],  // no body
-            OfPayload::EchoReply => vec![], // no body
+            OfPayload::Hello => vec![],       // no body
+            OfPayload::EchoRequest => vec![], // no body
+            OfPayload::EchoReply => vec![],   // no body
             //OfPayload::PacketOut(payload) => payload.into(),
             _ => panic!("not yet implemented {:?}", self),
         }
