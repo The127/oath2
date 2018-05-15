@@ -12,6 +12,7 @@ pub mod packet_queue;
 pub mod ports;
 pub mod flow_instructions;
 pub mod actions;
+pub mod features;
 
 /// defines an OpenFlow message
 /// header + payload
