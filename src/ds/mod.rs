@@ -10,6 +10,7 @@ pub mod flow_match;
 pub mod hw_addr;
 pub mod packet_queue;
 pub mod ports;
+pub mod flow_instructions;
 
 /// defines an OpenFlow message
 /// header + payload
