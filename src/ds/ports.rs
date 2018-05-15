@@ -26,12 +26,12 @@ impl TryFrom<u32> for PortNumber {
     }
 }
 
-impl Into<Result<u32>> for PortNumber {
-    fn into(self) -> Result<u32> {
-        Ok(match self {
+impl Into<u32> for PortNumber {
+    fn into(self) -> u32 {
+        match self {
             PortNumber::Reserved(port_no) => port_no.to_u32().unwrap(),
             PortNumber::NormalPort(port_no) => port_no,
-        })
+        }
     }
 }
 
