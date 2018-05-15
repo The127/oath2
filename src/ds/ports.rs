@@ -14,32 +14,43 @@ use std::path;
 pub const PORT_LENGTH: usize = 64;
 
 /// OpenFlow port struct.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Getters, Debug, PartialEq, Clone)]
 pub struct Port {
+    #[get = "pub"]
     port_no: PortNumber,
     //pad 4 bytes
+    #[get = "pub"]
     hw_addr: hw_addr::EthernetAddress,
     //pad 2 bytes, 
     /// Null terminated 16 byte (including null) port name
+    #[get = "pub"]
     name: CString,
 
     /// Bitmap of PortConfig flags.
+    #[get = "pub"]
     config: PortConfig,
     /// Bitmap of PortState flags.
+    #[get = "pub"]
     state: PortState,
 
     /// Current features.
+    #[get = "pub"]
     curr: PortFeatures,
     /// Features being advertised by the port.
+    #[get = "pub"]
     advertised: PortFeatures,
     /// Features supported by the port.
+    #[get = "pub"]
     supported: PortFeatures,
     /// Features advertised by peer.
+    #[get = "pub"]
     peer: PortFeatures,
 
     /// Current port bitrate in kbps.
+    #[get = "pub"]
     curr_speed: u32,
     /// Max port bitrate in kbps.
+    #[get = "pub"]
     max_speed: u32,
 }
 
