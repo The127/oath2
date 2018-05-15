@@ -562,8 +562,6 @@ pub struct PayloadInPhyPort {
     phy_port: u32,
 }
 
-unsafe impl Send for PayloadInPhyPort {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadInPhyPort{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -586,8 +584,6 @@ impl Into<Vec<u8>> for PayloadInPhyPort {
 pub struct PayloadMetadata {
     metadata: u64,
 }
-
-unsafe impl Send for PayloadMetadata {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadMetadata{
     type Error = Error;
@@ -612,8 +608,6 @@ pub struct PayloadEthDst {
     eth_dst: hw_addr::EthernetAddress,
 }
 
-unsafe impl Send for PayloadEthDst {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadEthDst{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -636,8 +630,6 @@ pub struct PayloadEthSrc {
     eth_src: hw_addr::EthernetAddress,
 }
 
-unsafe impl Send for PayloadEthSrc {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadEthSrc{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -659,8 +651,6 @@ impl Into<Vec<u8>> for PayloadEthSrc {
 pub struct PayloadEthType {
     ttype: EtherType,
 }
-
-unsafe impl Send for PayloadEthType {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadEthType{
     type Error = Error;
@@ -738,14 +728,10 @@ pub enum EtherType {
     VlanTaggedWithDoubleTagging = 0x9100,
 }
 
-unsafe impl Send for EtherType {}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct PayloadVlanVId {
     vlan_id: u16, // 12+1 bits
 }
-
-unsafe impl Send for PayloadVlanVId {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadVlanVId{
     type Error = Error;
@@ -770,8 +756,6 @@ pub struct PayloadVlanPcp {
     vlan_pcp: u8, // 3 bits
 }
 
-unsafe impl Send for PayloadVlanPcp {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadVlanPcp{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -794,8 +778,6 @@ impl Into<Vec<u8>> for PayloadVlanPcp {
 pub struct PayloadIpDscp {
     ip_dscp: u8, // 6 bits
 }
-
-unsafe impl Send for PayloadIpDscp {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIpDscp{
     type Error = Error;
@@ -820,8 +802,6 @@ pub struct PayloadIpEcn {
     ip_enc: u8, // 2 bits
 }
 
-unsafe impl Send for PayloadIpEcn {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadIpEcn{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -844,8 +824,6 @@ impl Into<Vec<u8>> for PayloadIpEcn {
 pub struct PayloadIpProto {
     ip_proto: IpProto,
 }
-
-unsafe impl Send for PayloadIpProto {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIpProto{
     type Error = Error;
@@ -1022,14 +1000,10 @@ pub enum IpProto {
     Reserved = 255,
 }
 
-unsafe impl Send for IpProto {}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct PayloadIPv4Src {
     ipv4_src: hw_addr::IPv4Address,
 }
-
-unsafe impl Send for PayloadIPv4Src {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv4Src{
     type Error = Error;
@@ -1053,8 +1027,6 @@ pub struct PayloadIPv4Dst {
     ipv4_dst: hw_addr::IPv4Address,
 }
 
-unsafe impl Send for PayloadIPv4Dst {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv4Dst{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1076,8 +1048,6 @@ impl Into<Vec<u8>> for PayloadIPv4Dst {
 pub struct PayloadTcpSrc {
     src_port: u16,
 }
-
-unsafe impl Send for PayloadTcpSrc {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadTcpSrc{
     type Error = Error;
@@ -1102,8 +1072,6 @@ pub struct PayloadTcpDst {
     dst_port: u16,
 }
 
-unsafe impl Send for PayloadTcpDst {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadTcpDst{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1126,8 +1094,6 @@ impl Into<Vec<u8>> for PayloadTcpDst {
 pub struct PayloadUdpSrc {
     src_port: u16,
 }
-
-unsafe impl Send for PayloadUdpSrc {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadUdpSrc{
     type Error = Error;
@@ -1152,8 +1118,6 @@ pub struct PayloadUdpDst {
     dst_port: u16,
 }
 
-unsafe impl Send for PayloadUdpDst {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadUdpDst{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1176,8 +1140,6 @@ impl Into<Vec<u8>> for PayloadUdpDst {
 pub struct PayloadSctpSrc {
     src_port: u16,
 }
-
-unsafe impl Send for PayloadSctpSrc {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSctpSrc{
     type Error = Error;
@@ -1202,8 +1164,6 @@ pub struct PayloadSctpDst {
     dst_port: u16,
 }
 
-unsafe impl Send for PayloadSctpDst {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadSctpDst{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1226,8 +1186,6 @@ impl Into<Vec<u8>> for PayloadSctpDst {
 pub struct PayloadIcmpV4Type {
     ttype: IcmpType,
 }
-
-unsafe impl Send for PayloadIcmpV4Type {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV4Type{
     type Error = Error;
@@ -1292,14 +1250,10 @@ pub enum IcmpType {
     ExperimentalMobility41 = 41,
 }
 
-unsafe impl Send for IcmpType {}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct PayloadIcmpV4Code {
     code: u8,
 }
-
-unsafe impl Send for PayloadIcmpV4Code {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV4Code{
     type Error = Error;
@@ -1323,8 +1277,6 @@ impl Into<Vec<u8>> for PayloadIcmpV4Code {
 pub struct PayloadArpOp {
     arp_op: ArpOp,
 }
-
-unsafe impl Send for PayloadArpOp {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadArpOp{
     type Error = Error;
@@ -1378,14 +1330,10 @@ pub enum ArpOp {
     Reserved66535 = 66535,
 }
 
-unsafe impl Send for ArpOp {}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct PayloadArpSpa {
     arp_spa: hw_addr::IPv4Address,
 }
-
-unsafe impl Send for PayloadArpSpa {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadArpSpa{
     type Error = Error;
@@ -1409,8 +1357,6 @@ pub struct PayloadArpTpa {
     arp_tpa: hw_addr::IPv4Address,
 }
 
-unsafe impl Send for PayloadArpTpa {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadArpTpa{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1432,8 +1378,6 @@ impl Into<Vec<u8>> for PayloadArpTpa {
 pub struct PayloadArpSha {
     arp_sha: hw_addr::EthernetAddress,
 }
-
-unsafe impl Send for PayloadArpSha {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadArpSha{
     type Error = Error;
@@ -1457,8 +1401,6 @@ pub struct PayloadArpTha {
     arp_tha: hw_addr::EthernetAddress,
 }
 
-unsafe impl Send for PayloadArpTha {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadArpTha{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1480,8 +1422,6 @@ impl Into<Vec<u8>> for PayloadArpTha {
 pub struct PayloadIPv6Src {
     ipv6_src: hw_addr::IPv6Address,
 }
-
-unsafe impl Send for PayloadIPv6Src {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv6Src{
     type Error = Error;
@@ -1505,8 +1445,6 @@ pub struct PayloadIPv6Dst {
     ipv6_dst: hw_addr::IPv6Address,
 }
 
-unsafe impl Send for PayloadIPv6Dst {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv6Dst{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1528,8 +1466,6 @@ impl Into<Vec<u8>> for PayloadIPv6Dst {
 pub struct PayloadIPv6FLabel {
     flabel: u32, // 20 bits
 }
-
-unsafe impl Send for PayloadIPv6FLabel {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv6FLabel{
     type Error = Error;
@@ -1553,8 +1489,6 @@ impl Into<Vec<u8>> for PayloadIPv6FLabel {
 pub struct PayloadIcmpV6Type {
     ttype: IcmpV6Type,
 }
-
-unsafe impl Send for PayloadIcmpV6Type {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV6Type{
     type Error = Error;
@@ -1625,14 +1559,10 @@ pub enum IcmpV6Type {
     Reserved255 = 255,
 }
 
-unsafe impl Send for IcmpV6Type {}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct PayloadIcmpV6Code {
     code: u8,
 }
-
-unsafe impl Send for PayloadIcmpV6Code {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIcmpV6Code{
     type Error = Error;
@@ -1657,8 +1587,6 @@ pub struct PayloadIPv6NdTarget {
     target: hw_addr::IPv6Address,
 }
 
-unsafe impl Send for PayloadIPv6NdTarget {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdTarget{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1680,8 +1608,6 @@ impl Into<Vec<u8>> for PayloadIPv6NdTarget {
 pub struct PayloadIPv6NdSll {
     nd_sll: hw_addr::EthernetAddress,
 }
-
-unsafe impl Send for PayloadIPv6NdSll {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdSll{
     type Error = Error;
@@ -1705,8 +1631,6 @@ pub struct PayloadIPv6NdTll {
     nd_tll: hw_addr::EthernetAddress,
 }
 
-unsafe impl Send for PayloadIPv6NdTll {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv6NdTll{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1728,8 +1652,6 @@ impl Into<Vec<u8>> for PayloadIPv6NdTll {
 pub struct PayloadMplsLabel {
     label: u32, // 20 bits
 }
-
-unsafe impl Send for PayloadMplsLabel {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadMplsLabel{
     type Error = Error;
@@ -1754,8 +1676,6 @@ pub struct PayloadMplsTc {
     tc: u8, // 3 bits
 }
 
-unsafe impl Send for PayloadMplsTc {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadMplsTc{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1778,8 +1698,6 @@ impl Into<Vec<u8>> for PayloadMplsTc {
 pub struct PayloadMplsBos {
     bos: u8, // 1 bits
 }
-
-unsafe impl Send for PayloadMplsBos {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadMplsBos{
     type Error = Error;
@@ -1804,8 +1722,6 @@ pub struct PayloadPbbISid {
     i_sid: u32, // 24 bits
 }
 
-unsafe impl Send for PayloadPbbISid {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadPbbISid{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1829,8 +1745,6 @@ pub struct PayloadTunnelId {
     metadata: u64,
 }
 
-unsafe impl Send for PayloadTunnelId {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadTunnelId{
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -1853,8 +1767,6 @@ impl Into<Vec<u8>> for PayloadTunnelId {
 pub struct PayloadIPv6ExtHdr {
     ext_hdr_flags: IPv6ExtHdrFlags, // 9 bits
 }
-
-unsafe impl Send for PayloadIPv6ExtHdr {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadIPv6ExtHdr{
     type Error = Error;
@@ -1899,8 +1811,6 @@ bitfield!{
     /// Unexpected sequencing encountered.
     pub get_unseq, set_unseq: 9, 8;
 }
-
-unsafe impl Send for IPv6ExtHdrFlags {}
 
 impl Clone for IPv6ExtHdrFlags{
     fn clone(&self) -> Self {
