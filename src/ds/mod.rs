@@ -13,6 +13,18 @@ pub mod ports;
 pub mod flow_instructions;
 pub mod actions;
 pub mod features;
+pub mod switch_config;
+pub mod table_mod;
+pub mod flow_mod;
+pub mod group_mod;
+pub mod port_mod;
+pub mod meter_mod;
+pub mod multipart;
+pub mod queue_config;
+pub mod packet_out;
+pub mod role;
+pub mod async;
+pub mod packet_in;
 
 /// defines an OpenFlow message
 /// header + payload
