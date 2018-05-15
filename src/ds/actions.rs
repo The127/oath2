@@ -7,6 +7,8 @@ use super::flow_match::*;
 use super::super::err::*;
 use super::ports::PortNumber;
 
+use std::path;
+
 #[derive(Primitive, Debug, PartialEq, Clone)]
 pub enum ActionType {
     /// Output to switch port.
@@ -56,11 +58,28 @@ pub struct ActionHeader {
     payload: ActionPayload,
 }
 
-pub fn get_action_header_slice_len(cursor: &mut Cursor<&[u8]>) -> usize {
-    cursor.seek(SeekFrom::Current(2)).unwrap();
-    let len = cursor.read_u16::<BigEndian>().unwrap();
-    cursor.seek(SeekFrom::Current(-4)).unwrap();
-    len as usize
+impl ActionHeader {
+    pub fn read_len(cursor: &mut Cursor<&[u8]>) -> Result<usize> {
+        // go to len position in the raw bytes
+        cursor.seek(SeekFrom::Current(2)).unwrap();
+        // read value and handle errors
+        let len = match cursor.read_u16::<BigEndian>() {
+            Ok(len) => len,
+            Err(err) => {
+                error!(
+                    "Could not read packet queue len.{}{:?}{}{}",
+                    path::MAIN_SEPARATOR,
+                    cursor,
+                    path::MAIN_SEPARATOR,
+                    err
+                );
+                bail!(ErrorKind::CouldNotReadLength(2, stringify!(PacketQueue),))
+            }
+        };
+        // go back to start
+        cursor.seek(SeekFrom::Current(-4)).unwrap();
+        Ok(len as usize)
+    }
 }
 
 unsafe impl Send for ActionHeader {}
