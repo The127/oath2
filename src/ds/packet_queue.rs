@@ -48,15 +48,27 @@ impl<'a> TryFrom<&'a [u8]> for PacketQueue {
         let mut properties = Vec::new();
         let mut cursor = Cursor::new(bytes);
         // first get "header" data and verify bytes.len()
-        let queue_id = cursor.read_u32::<BigEndian>().unwrap();
+        let queue_id = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read PacketQueue queue_id!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
         
         // read raw val
-        let port = cursor.read_u32::<BigEndian>().unwrap();
+        let port = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read PacketQueue port!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
         // try to decode it
         // can a packetqueue port be a reserved keyword?
         let port = PortNumber::try_from(port)?;
 
-        let len = cursor.read_u16::<BigEndian>().unwrap();
+        let len = cursor.read_u16::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read PacketQueue len!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
 
         //put cursor to correct position
         cursor.seek(SeekFrom::Start(PACKET_QUEUE_LENGTH as u64)).unwrap();
@@ -149,13 +161,21 @@ impl<'a> TryFrom<&'a [u8]> for QueuePropHeader {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        let property_raw = cursor.read_u16::<BigEndian>().unwrap();
+        let property_raw = cursor.read_u16::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read QueuePropHeader property_raw!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
         let property = QueueProperties::from_u16(property_raw)
             .ok_or::<Error>(ErrorKind::UnknownValue(property_raw as u64, stringify!(QueueProperties)).into())?;
 
         Ok(QueuePropHeader{
             property: property,
-            len: cursor.read_u16::<BigEndian>().unwrap(),
+            len: cursor.read_u16::<BigEndian>().chain_err(|| {
+                let err_msg = format!("Could not read QueuePropHeader len!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                error!("{}", err_msg);
+                err_msg
+            })?,
         })
         //padding 4 bytes by ignoring them
     }
@@ -217,7 +237,11 @@ impl<'a> TryFrom<&'a [u8]> for QueuePropMinRate {
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         Ok(QueuePropMinRate{
-            rate: cursor.read_u16::<BigEndian>().unwrap(),
+            rate: cursor.read_u16::<BigEndian>().chain_err(|| {
+                let err_msg = format!("Could not read QueuePropMinRate rate!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                error!("{}", err_msg);
+                err_msg
+            })?,
         })
         //pad 6 bytes by ignoring them
     }
@@ -246,7 +270,11 @@ impl<'a> TryFrom<&'a [u8]> for QueuePropMaxRate {
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
         Ok(QueuePropMaxRate{
-            rate: cursor.read_u16::<BigEndian>().unwrap(),
+            rate: cursor.read_u16::<BigEndian>().chain_err(|| {
+                let err_msg = format!("Could not read QueuePropMaxRate rate!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                error!("{}", err_msg);
+                err_msg
+            })?,
         })
         //pad 6 bytes by ignoring them
     }
@@ -274,7 +302,11 @@ impl<'a> TryFrom<&'a [u8]> for QueuePropExperimenter {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         let mut cursor = Cursor::new(bytes);
-        let experimenter = cursor.read_u32::<BigEndian>().unwrap();
+        let experimenter = cursor.read_u32::<BigEndian>().chain_err(|| {
+            let err_msg = format!("Could not read QueuePropExperimenter experimenter!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
         //pad 4 bytes by ignoring them
         let data = Vec::from(&bytes[8..]);
         Ok(QueuePropExperimenter{
