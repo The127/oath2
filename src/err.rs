@@ -21,5 +21,10 @@ error_chain!{
             description("Encountered unknown value."),
             display("Encountered unknown value '{}' for type '{}.", val, ttype),
         }
+
+        IllegalValue(val: u64, ttype: &'static str) {
+            description("Encountered illegal value."),
+            display("Encountered illegal value '{}' for type '{}.", val, ttype),
+        }
     }
 }
