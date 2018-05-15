@@ -88,22 +88,15 @@ impl<'a> TryFrom<&'a [u8]> for Header {
             ).into());
         }
         let mut cursor = Cursor::new(bytes);
-        // read raw version val
+
         let version_raw = cursor.read_u8().unwrap();
-        // try to decode it
-        let version = match Version::from_u8(version_raw) {
-            Some(version) => version,
-            None => {
-                return Err(ErrorKind::UnknownValue(version_raw as u64, stringify!(Version)).into())
-            }
-        };
-        // read type version val
+        let version = Version::from_u8(version_raw)
+            .ok_or::<Error>(ErrorKind::UnknownValue(version_raw as u64, stringify!(Version)).into())?;
+
         let ttype_raw = cursor.read_u8().unwrap();
-        // try to decode it
-        let ttype = match Type::from_u8(ttype_raw) {
-            Some(ttype) => ttype,
-            None => return Err(ErrorKind::UnknownValue(ttype_raw as u64, stringify!(Type)).into()),
-        };
+        let ttype = Type::from_u8(ttype_raw)
+            .ok_or::<Error>(ErrorKind::UnknownValue(ttype_raw as u64, stringify!(Type)).into())?;
+
         // build result
         Ok(Header {
             version: version,
@@ -270,12 +263,14 @@ pub enum OfPayload {
 
 impl OfPayload {
     pub fn generate_header(&self, xid: u32) -> Header {
+        //create basic default header
         let mut header = Header{
             version: Version::V1_3,
             ttype: Type::Hello,
             length: HEADER_LENGTH as u16,
             xid: xid,
         };
+        //change header depending on payload
         match self {
             OfPayload::Hello => (),
             //OfPayload::Error,
