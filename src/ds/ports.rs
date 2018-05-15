@@ -313,3 +313,64 @@ bitflags! {
         const PAUSE_ASYM = 1 << 15;
     }
 }
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+    use super::super::hw_addr;
+
+    #[test]
+    fn tryfrom_smallslice() {
+        assert!(Port::try_from(&[0u8;PORT_LENGTH-1][..]).is_err());
+    }
+    
+    #[test]
+    fn tryfrom_bigslice() {
+        assert!(Port::try_from(&[0u8;PORT_LENGTH+1][..]).is_err());
+    }
+
+    #[test]
+    fn into_length(){
+        let p = Port{
+            port_no: PortNumber::NormalPort(1),
+            hw_addr: hw_addr::from_slice_eth(&[0u8; 6]).expect("could not parse test hw_addr"),
+            name: ::std::ffi::CString::new(b"exactly15bytesa".to_vec()).expect("error while creating CString for test"),
+            config: PortConfig::empty(),
+            state: PortState::empty(),
+            curr: PortFeatures::MB10_HD,
+            advertised: PortFeatures::MB10_HD,
+            supported: PortFeatures::MB10_HD,
+            peer: PortFeatures::MB10_HD,
+            curr_speed: 7,
+            max_speed: 8,
+        };
+        let vec: Vec<u8> = p.into();
+        assert_eq!(super::PORT_LENGTH, vec.len());
+    }
+
+    #[test]
+    fn into_tryfrom() {
+        let testee = Port{
+            port_no: PortNumber::NormalPort(1),
+            hw_addr: hw_addr::from_slice_eth(&[0u8; 6]).expect("could not parse test hw_addr"),
+            name: ::std::ffi::CString::new(b"exactly15bytesa".to_vec()).expect("error while creating CString for test"),
+            config: PortConfig::empty(),
+            state: PortState::empty(),
+            curr: PortFeatures::MB10_HD,
+            advertised: PortFeatures::MB10_HD,
+            supported: PortFeatures::MB10_HD,
+            peer: PortFeatures::MB10_HD,
+            curr_speed: 7,
+            max_speed: 8,
+        };
+        // create 2 byte arrays and 2 from ports
+        // because else the CStrings dont have a null at the end
+        let bytes = Into::<Vec<u8>>::into(testee.clone());
+        let from = Port::try_from(&bytes[..]).expect("Error while decoding Port from bytes.");
+        let bytes2 = Into::<Vec<u8>>::into(from.clone());
+        let from2 = Port::try_from(&bytes2[..]).expect("Error while decoding Port from bytes.");
+        assert_eq!(from2, from);
+        assert_eq!(PORT_LENGTH, bytes.len());
+        assert_eq!(PORT_LENGTH, bytes2.len());
+    }
+}
