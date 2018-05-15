@@ -74,7 +74,7 @@ fn handle_hello(msg: switch::IncomingMsg) {
 }
 
 fn handle_echo_request(msg: switch::IncomingMsg) {
-    let response = ds::OfMsg::generate(*msg.msg.header().xid(), ds::OfPayload::EchoResponse);
+    let response = ds::OfMsg::generate(*msg.msg.header().xid(), ds::OfPayload::EchoReply);
     msg.reply_ch
         .send(response)
         .expect("could not send hello response");

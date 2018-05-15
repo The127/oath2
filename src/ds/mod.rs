@@ -6,6 +6,7 @@ use std::io::Cursor;
 use super::err::*;
 
 pub mod hw_addr;
+pub mod ports;
 
 /// defines an OpenFlow message
 /// header + payload
@@ -229,7 +230,7 @@ pub enum OfPayload {
     Hello,
     Error,
     EchoRequest,
-    EchoResponse,
+    EchoReply,
     Experimenter,
 
     FeaturesRequest,
@@ -281,35 +282,87 @@ impl OfPayload {
             OfPayload::EchoRequest => {
                 header.ttype = Type::EchoRequest;
             },
-            OfPayload::EchoResponse => {
+            OfPayload::EchoReply => {
                 header.ttype = Type::EchoReply;
             },
-            //OfPayload::Experimenter,
-            //OfPayload::FeaturesRequest,
-            //OfPayload::FeaturesReply,
-            //OfPayload::GetConfigRequest,
-            //OfPayload::GetConfigReply,
-            //OfPayload::SetConfig,
-            //OfPayload::PacketIn,
-            //OfPayload::FlowRemoved,
-            //OfPayload::PortStatus,
-            //OfPayload::PacketOut,
-            //OfPayload::FlowMod,
-            //OfPayload::GroupMod,
-            //OfPayload::PortMod,
-            //OfPayload::TableMod,
-            //OfPayload::MultipartRequest,
-            //OfPayload::MultipartReply,
-            //OfPayload::BarrierRequest,
-            //OfPayload::BarrierReply,
-            //OfPayload::QueueGetConfigRequest,
-            //OfPayload::QueueGetConfigReply,
-            //OfPayload::RoleRequest,
-            //OfPayload::RoleReply,
-            //OfPayload::GetAsyncRequest,
-            //OfPayload::GetAsyncReply,
-            //OfPayload::SetAsync,
-            //OfPayload::MeterMod,
+            OfPayload::Experimenter => {
+                header.ttype = Type::Experimenter;
+            },
+            OfPayload::FeaturesRequest => {
+                header.ttype = Type::FeaturesRequest;
+            },
+            OfPayload::FeaturesReply => {
+                header.ttype = Type::FeaturesReply;
+            },
+            OfPayload::GetConfigRequest => {
+                header.ttype = Type::GetConfigRequest;
+            },
+            OfPayload::GetConfigReply => {
+                header.ttype = Type::GetConfigRequest;
+            },
+            OfPayload::SetConfig => {
+                header.ttype = Type::SetConfig;
+            }
+            OfPayload::PacketIn => {
+                header.ttype = Type::PacketIn;
+            },
+            OfPayload::FlowRemoved => {
+                header.ttype = Type::FlowRemoved;
+            },
+            OfPayload::PortStatus => {
+                header.ttype = Type::PortStatus;
+            },
+            OfPayload::PacketOut => {
+                header.ttype = Type::PacketOut;
+            },
+            OfPayload::FlowMod => {
+                header.ttype = Type::FlowMod;
+            },
+            OfPayload::GroupMod => {
+                header.ttype = Type::GroupMod;
+            },
+            OfPayload::PortMod => {
+                header.ttype = Type::PortMod;
+            },
+            OfPayload::TableMod => {
+                header.ttype = Type::TableMod;
+            },
+            OfPayload::MultipartRequest => {
+                header.ttype = Type::MultipartRequest;
+            },
+            OfPayload::MultipartReply => {
+                header.ttype = Type::MultipartReply;
+            },
+            OfPayload::BarrierRequest => {
+                header.ttype = Type::BarrierRequest;
+            },
+            OfPayload::BarrierReply => {
+                header.ttype = Type::BarrierReply;
+            },
+            OfPayload::QueueGetConfigRequest => {
+                header.ttype = Type::QueueGetConfigRequest;
+            },
+            OfPayload::QueueGetConfigReply => {
+                header.ttype = Type::QueueGetConfigReply;
+            },
+            OfPayload::RoleRequest => {
+                header.ttype = Type::RoleRequest;
+            },
+            OfPayload::RoleReply => {
+                header.ttype = Type::RoleReply;
+            },
+            OfPayload::GetAsyncRequest => {
+                header.ttype = Type::GetAsyncRequest;
+            },
+            OfPayload::GetAsyncReply => {
+                header.ttype = Type::GetAsyncReply;
+            },
+            OfPayload::SetAsync => {
+                header.ttype = Type::SetAsync;
+            },
+            OfPayload::MeterMod => {
+                header.ttype = Type::MeterMod;
+            },
             _ => panic!("not yet implemented header gen {:?}", self),
         }
         header
@@ -321,7 +374,7 @@ impl Into<Vec<u8>> for OfPayload {
         match self {
             OfPayload::Hello => vec![],        // no body
             OfPayload::EchoRequest => vec![],  // no body
-            OfPayload::EchoResponse => vec![], // no body
+            OfPayload::EchoReply => vec![], // no body
             //OfPayload::PacketOut(payload) => payload.into(),
             _ => panic!("not yet implemented {:?}", self),
         }
