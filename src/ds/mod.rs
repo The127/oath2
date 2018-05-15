@@ -3,6 +3,7 @@ use num_traits::{FromPrimitive, ToPrimitive};
 use std::convert::{Into, TryFrom};
 use std::io::Cursor;
 
+use std::path;
 use super::err::*;
 
 pub mod hw_addr;
@@ -81,19 +82,27 @@ impl<'a> TryFrom<&'a [u8]> for Header {
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
         // check if bytes have correct length
         if bytes.len() != HEADER_LENGTH {
-            return Err(ErrorKind::InvalidSliceLength(
+            bail!(ErrorKind::InvalidSliceLength(
                 HEADER_LENGTH,
                 bytes.len(),
                 stringify!(Header),
-            ).into());
+            ));
         }
         let mut cursor = Cursor::new(bytes);
 
-        let version_raw = cursor.read_u8().unwrap();
+        let version_raw = cursor.read_u8().chain_err(|| {
+            let err_msg = format!("Could not read header version!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
         let version = Version::from_u8(version_raw)
             .ok_or::<Error>(ErrorKind::UnknownValue(version_raw as u64, stringify!(Version)).into())?;
 
-        let ttype_raw = cursor.read_u8().unwrap();
+        let ttype_raw = cursor.read_u8().chain_err(|| {
+            let err_msg = format!("Could not read header type!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+            error!("{}", err_msg);
+            err_msg
+        })?;
         let ttype = Type::from_u8(ttype_raw)
             .ok_or::<Error>(ErrorKind::UnknownValue(ttype_raw as u64, stringify!(Type)).into())?;
 
@@ -101,8 +110,16 @@ impl<'a> TryFrom<&'a [u8]> for Header {
         Ok(Header {
             version: version,
             ttype: ttype,
-            length: cursor.read_u16::<BigEndian>().unwrap(),
-            xid: cursor.read_u32::<BigEndian>().unwrap(),
+            length: cursor.read_u16::<BigEndian>().chain_err(|| {
+                let err_msg = format!("Could not read header length!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                error!("{}", err_msg);
+                err_msg
+            })?,
+            xid: cursor.read_u32::<BigEndian>().chain_err(|| {
+                let err_msg = format!("Could not read header xid!{}Cursor: {:?}", path::MAIN_SEPARATOR, cursor);
+                error!("{}", err_msg);
+                err_msg
+            })?,
         })
     }
 }
