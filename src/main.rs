@@ -17,7 +17,7 @@ pub fn main() {
             actions.push(Into::<ds::actions::ActionHeader>::into(
                 ds::actions::PayloadOutput {
                     port: ds::ports::PortNumber::Reserved(ds::ports::PortNo::Flood),
-                    max_len: ::std::u16::MAX,
+                    max_len: 0,
                 },
             ));
             let mut actions_len = 0;
