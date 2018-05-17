@@ -2,7 +2,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::convert::{Into, TryFrom};
 use std::io::{Cursor, Seek, SeekFrom};
 
-use super::actions::{ActionHeader, calc_actions_len};
+use super::actions::{calc_actions_len, ActionHeader};
 use super::ports::PortNumber;
 
 use super::super::err::*;
@@ -20,8 +20,13 @@ pub struct PacketOut {
 }
 
 impl PacketOut {
-    pub fn new(buffer_id: u32, in_port: PortNumber, actions: Vec<ActionHeader>, data: Vec<u8>) -> Self {
-        PacketOut{
+    pub fn new(
+        buffer_id: u32,
+        in_port: PortNumber,
+        actions: Vec<ActionHeader>,
+        data: Vec<u8>,
+    ) -> Self {
+        PacketOut {
             buffer_id: buffer_id,
             in_port: in_port,
             actions_len: calc_actions_len(&actions),

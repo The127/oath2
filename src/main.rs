@@ -20,13 +20,6 @@ pub fn main() {
                     max_len: 0,
                 },
             ));
-            /*let payload_packet_out = ds::packet_out::PacketOut {
-                buffer_id: packet_in.buffer_id,
-                in_port: ds::ports::PortNumber::Reserved(ds::ports::PortNo::Controller),
-                actions_len: ds::actions::calc_actions_len(&actions),
-                actions: actions,
-                data: packet_in.ethernet_frame.clone(),
-            };*/
             let payload_packet_out = ds::packet_out::PacketOut::new(
                 packet_in.buffer_id,
                 ds::ports::PortNo::Controller.into(),
