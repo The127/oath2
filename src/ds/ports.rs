@@ -278,6 +278,12 @@ pub enum PortNo {
     Any = 0xffffffff,
 }
 
+impl Into<PortNumber> for PortNo {
+    fn into(self) -> PortNumber {
+        PortNumber::Reserved(self)
+    }
+}
+
 bitflags!{
     /// Flags to indicate behavior of the physical port. These flags are
     /// used in ofp_port to describe the current configuration. They are
