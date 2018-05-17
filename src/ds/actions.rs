@@ -47,6 +47,14 @@ pub enum ActionType {
     //Experimenter = 0xffff,
 }
 
+pub fn calc_actions_len(actions: &Vec<ActionHeader>) -> u16 {
+    let mut actions_len = 0;
+    for action in actions {
+        actions_len += action.len();
+    }
+    actions_len
+}
+
 pub const ACTION_HEADER_LEN: u16 = 4;
 
 #[derive(Getters, Debug, PartialEq, Clone)]
