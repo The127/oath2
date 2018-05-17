@@ -13,8 +13,6 @@ pub struct MeterMod {
     pub bands: Vec<MeterBandPayload>,
 }
 
-unsafe impl Send for MeterMod {}
-
 impl Into<Vec<u8>> for MeterMod {
     fn into(self) -> Vec<u8> {
         let mut res = Vec::new();
@@ -41,8 +39,6 @@ pub enum MeterModCommand {
     Delete = 3,
 }
 
-unsafe impl Send for MeterModCommand {}
-
 /* Meter configuration flags */
 bitflags!{
     pub struct MeterFlags: u16 {
@@ -57,8 +53,6 @@ bitflags!{
     }
 }
 
-unsafe impl Send for MeterFlags {}
-
 /// Common header for all meter bands
 #[derive(Debug)]
 pub struct MeterBandHeader {
@@ -72,8 +66,6 @@ pub struct MeterBandHeader {
     burst_size: u32,
     payload: MeterBandPayload,
 }
-
-unsafe impl Send for MeterBandHeader {}
 
 impl Into<Vec<u8>> for MeterBandHeader {
     fn into(self) -> Vec<u8> {
@@ -138,8 +130,6 @@ pub enum MeterBandPayload {
     Experimenter(MeterBandExperimenter),
 }
 
-unsafe impl Send for MeterBandPayload {}
-
 impl Into<Vec<u8>> for MeterBandPayload {
     fn into(self) -> Vec<u8> {
         match self {
@@ -154,8 +144,6 @@ impl Into<Vec<u8>> for MeterBandPayload {
 pub struct MeterBandDrop {
     //pad 4 bytes
 }
-
-unsafe impl Send for MeterBandDrop {}
 
 impl Into<Vec<u8>> for MeterBandDrop {
     fn into(self) -> Vec<u8> {
@@ -179,8 +167,6 @@ pub struct MeterBandRemark {
     prec_level: u8,
     //pad 3 bytes
 }
-
-unsafe impl Send for MeterBandRemark {}
 
 impl Into<Vec<u8>> for MeterBandRemark {
     fn into(self) -> Vec<u8> {
@@ -210,8 +196,6 @@ impl<'a> TryFrom<&'a [u8]> for MeterBandRemark {
 pub struct MeterBandExperimenter {
     experimenter: u32,
 }
-
-unsafe impl Send for MeterBandExperimenter {}
 
 impl Into<Vec<u8>> for MeterBandExperimenter {
     fn into(self) -> Vec<u8> {

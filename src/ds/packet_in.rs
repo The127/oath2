@@ -19,8 +19,6 @@ pub struct PacketIn {
     pub ethernet_frame: Vec<u8>,
 }
 
-unsafe impl Send for PacketIn {}
-
 impl<'a> TryFrom<&'a [u8]> for PacketIn {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {

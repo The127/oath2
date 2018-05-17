@@ -30,10 +30,6 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                     .expect("could not convert header bytes to actual header");
                 info!("Read OfHeader: {:?}.", header);
 
-                if *header.ttype() == ds::Type::PacketIn && *header.length() > 100 {
-                    println!("Packet IN detected");
-                }
-
                 // read input payload + log
                 let payload_bytes = &read_bytes(&mut stream_in, *&header.payload_length() as usize)
                     .expect("could not read payload bytes")[..];

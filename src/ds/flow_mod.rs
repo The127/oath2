@@ -27,8 +27,6 @@ pub struct FlowMod {
     pub instructions: Vec<flow_instructions::InstructionHeader>,
 }
 
-unsafe impl Send for FlowMod {}
-
 impl<'a> TryFrom<&'a [u8]> for FlowMod {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {

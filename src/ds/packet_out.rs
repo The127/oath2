@@ -19,8 +19,6 @@ pub struct PacketOut {
     pub data: Vec<u8>,
 }
 
-unsafe impl Send for PacketOut {}
-
 impl<'a> TryFrom<&'a [u8]> for PacketOut {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {

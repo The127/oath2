@@ -18,8 +18,6 @@ pub struct GroupMod {
     buckets: Vec<Bucket>,
 }
 
-unsafe impl Send for GroupMod {}
-
 impl<'a> TryFrom<&'a [u8]> for GroupMod {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -81,8 +79,6 @@ pub enum GroupModCommand {
     Delete = 2,
 }
 
-unsafe impl Send for GroupModCommand {}
-
 /// Group types. Values in the range [128, 255] are reserved for experimental
 /// use.
 #[derive(Primitive, PartialEq, Debug, Clone)]
@@ -96,8 +92,6 @@ enum GroupType {
     /// Fast failover group.
     Ff = 3,
 }
-
-unsafe impl Send for GroupType {}
 
 #[derive(Debug)]
 pub struct Bucket {
@@ -130,8 +124,6 @@ impl Bucket {
         Ok(len as usize)
     }
 }
-
-unsafe impl Send for Bucket {}
 
 impl<'a> TryFrom<&'a [u8]> for Bucket {
     type Error = Error;

@@ -12,8 +12,6 @@ pub struct TableMod {
     config: u32,
 }
 
-unsafe impl Send for TableMod {}
-
 impl<'a> TryFrom<&'a [u8]> for TableMod {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {

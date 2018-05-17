@@ -14,8 +14,6 @@ pub struct Async {
     pub flow_removed_mask_2: u32,
 }
 
-unsafe impl Send for Async {}
-
 impl<'a> TryFrom<&'a [u8]> for Async {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {

@@ -12,8 +12,6 @@ pub struct Role {
     pub generation_id: u64,
 }
 
-unsafe impl Send for Role {}
-
 impl Into<Vec<u8>> for Role {
     fn into(self) -> Vec<u8> {
         let mut vec = Vec::new();
@@ -54,5 +52,3 @@ pub enum ControllerRole {
     /// Read-only access.  
     Slave = 3,
 }
-
-unsafe impl Send for ControllerRole {}

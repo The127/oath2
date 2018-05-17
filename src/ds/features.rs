@@ -15,8 +15,6 @@ pub struct SwitchFeatures {
     pub reserved: u32,
 }
 
-unsafe impl Send for SwitchFeatures {}
-
 impl<'a> TryFrom<&'a [u8]> for SwitchFeatures {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {

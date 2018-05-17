@@ -19,8 +19,6 @@ pub struct PortMod {
     //pad 4 bytes
 }
 
-unsafe impl Send for PortMod {}
-
 impl<'a> TryFrom<&'a [u8]> for PortMod {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {

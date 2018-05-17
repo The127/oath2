@@ -47,8 +47,6 @@ pub enum ActionType {
     //Experimenter = 0xffff,
 }
 
-unsafe impl Send for ActionType {}
-
 pub const ACTION_HEADER_LEN: u16 = 4;
 
 #[derive(Getters, Debug, PartialEq, Clone)]
@@ -82,8 +80,6 @@ impl ActionHeader {
         Ok(len as usize)
     }
 }
-
-unsafe impl Send for ActionHeader {}
 
 impl<'a> TryFrom<&'a [u8]> for ActionHeader {
     type Error = Error;
@@ -134,8 +130,6 @@ pub enum ActionPayload {
     PopPbb(PayloadPopPbb),
     //Experimenter(PayloadExperimenter),
 }
-
-unsafe impl Send for ActionPayload {}
 
 impl Into<Vec<u8>> for ActionPayload {
     fn into(self) -> Vec<u8> {
@@ -196,8 +190,6 @@ pub struct PayloadOutput {
     // pad 6 bytes
 }
 
-unsafe impl Send for PayloadOutput {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadOutput {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -239,8 +231,6 @@ pub struct PayloadGroup {
     group_id: u32,
 }
 
-unsafe impl Send for PayloadGroup {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadGroup {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -264,8 +254,6 @@ impl Into<Vec<u8>> for PayloadGroup {
 pub struct PayloadSetQueue {
     queue_id: u32,
 }
-
-unsafe impl Send for PayloadSetQueue {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSetQueue {
     type Error = Error;
@@ -291,8 +279,6 @@ pub struct PayloadSetMplsTtl {
     mpls_ttl: u8,
     // pad 3 bytes
 }
-
-unsafe impl Send for PayloadSetMplsTtl {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSetMplsTtl {
     type Error = Error;
@@ -321,8 +307,6 @@ pub struct PayloadDecMplsTtl {
     // pad 4 bytes
 }
 
-unsafe impl Send for PayloadDecMplsTtl {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadDecMplsTtl {
     type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
@@ -345,8 +329,6 @@ pub struct PayloadSetNwTtl {
     nw_ttl: u8,
     // pad 3 bytes
 }
-
-unsafe impl Send for PayloadSetNwTtl {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSetNwTtl {
     type Error = Error;
@@ -375,8 +357,6 @@ pub struct PayloadDecNwTtl {
     // pad 4 bytes
 }
 
-unsafe impl Send for PayloadDecNwTtl {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadDecNwTtl {
     type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
@@ -398,8 +378,6 @@ impl Into<Vec<u8>> for PayloadDecNwTtl {
 pub struct PayloadCopyTtlOut {
     // pad 4 bytes
 }
-
-unsafe impl Send for PayloadCopyTtlOut {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadCopyTtlOut {
     type Error = Error;
@@ -423,8 +401,6 @@ pub struct PayloadCopyTtlIn {
     // pad 4 bytes
 }
 
-unsafe impl Send for PayloadCopyTtlIn {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadCopyTtlIn {
     type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
@@ -447,8 +423,6 @@ pub struct PayloadPushVlan {
     ethertype: EtherType,
     // pad 2 bytes
 }
-
-unsafe impl Send for PayloadPushVlan {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadPushVlan {
     type Error = Error;
@@ -482,8 +456,6 @@ pub struct PayloadPushMpls {
     // pad 2 bytes
 }
 
-unsafe impl Send for PayloadPushMpls {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadPushMpls {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -516,8 +488,6 @@ pub struct PayloadPushPbb {
     // pad 2 bytes
 }
 
-unsafe impl Send for PayloadPushPbb {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadPushPbb {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
@@ -549,8 +519,6 @@ pub struct PayloadPopVlan {
     // pad 4 bytes
 }
 
-unsafe impl Send for PayloadPopVlan {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadPopVlan {
     type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
@@ -573,8 +541,6 @@ pub struct PayloadPopMpls {
     ethertype: EtherType,
     // pad 2 bytes
 }
-
-unsafe impl Send for PayloadPopMpls {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadPopMpls {
     type Error = Error;
@@ -607,8 +573,6 @@ pub struct PayloadPopPbb {
     // pad 4 bytes
 }
 
-unsafe impl Send for PayloadPopPbb {}
-
 impl<'a> TryFrom<&'a [u8]> for PayloadPopPbb {
     type Error = Error;
     fn try_from(_bytes: &'a [u8]) -> Result<Self> {
@@ -638,8 +602,6 @@ pub struct PayloadSetField {
      * a multiple of 8, to preserve alignement in structures using it.
      */
 }
-
-unsafe impl Send for PayloadSetField {}
 
 impl<'a> TryFrom<&'a [u8]> for PayloadSetField {
     type Error = Error;

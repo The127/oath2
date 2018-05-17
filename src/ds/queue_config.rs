@@ -33,8 +33,6 @@ impl<'a> TryFrom<&'a [u8]> for QueueGetConfigRequest {
     }
 }
 
-unsafe impl Send for QueueGetConfigRequest {}
-
 #[derive(Debug)]
 pub struct QueueGetConfigReply {
     pub port: PortNumber,
@@ -80,5 +78,3 @@ impl<'a> TryFrom<&'a [u8]> for QueueGetConfigReply {
         })
     }
 }
-
-unsafe impl Send for QueueGetConfigReply {}

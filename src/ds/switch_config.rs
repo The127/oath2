@@ -11,8 +11,6 @@ pub struct SwitchConfig {
     // no padding, since there are no data after this
 }
 
-unsafe impl Send for SwitchConfig {}
-
 impl<'a> TryFrom<&'a [u8]> for SwitchConfig {
     type Error = Error;
     fn try_from(bytes: &'a [u8]) -> Result<Self> {
