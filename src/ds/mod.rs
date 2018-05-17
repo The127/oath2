@@ -25,6 +25,7 @@ pub mod queue_config;
 pub mod role;
 pub mod switch_config;
 pub mod table_mod;
+pub mod flow_removed;
 
 /// defines an OpenFlow message
 /// header + payload
@@ -284,7 +285,7 @@ pub enum OfPayload {
     SetConfig(switch_config::SwitchConfig),
 
     PacketIn(packet_in::PacketIn),
-    FlowRemoved,
+    FlowRemoved(flow_removed::FlowRemoved),
     PortStatus,
 
     PacketOut(packet_out::PacketOut),
