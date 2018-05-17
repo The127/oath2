@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, Shutdown};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
@@ -26,14 +26,30 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                 // read input header + log
                 let header_bytes = read_bytes(&mut stream_in, ds::HEADER_LENGTH)
                     .expect("could not read header bytes");
+
+                // check if connection was closed
+                if header_bytes == None {
+                    return;
+                }
+                // else unwrap them
+                let header_bytes = header_bytes.unwrap();
+
                 let header = ds::Header::try_from(&header_bytes[..])
                     .expect("could not convert header bytes to actual header");
                 info!("Read OfHeader: {:?}.", header);
 
                 // read input payload + log
-                let payload_bytes = &read_bytes(&mut stream_in, *&header.payload_length() as usize)
-                    .expect("could not read payload bytes")[..];
+                let payload_bytes = read_bytes(&mut stream_in, *&header.payload_length() as usize)
+                    .expect("could not read payload bytes");
                 info!("Read Payload Bytes");
+
+                // check if connection was closed
+                if payload_bytes == None {
+                    return;
+                }
+                //else unwrap them
+                let payload_bytes = &payload_bytes.unwrap()[..];
+
                 let payload = match &header.ttype() {
                     ds::Type::Hello => Some(ds::OfPayload::Hello),
                     ds::Type::Error => Some(ds::OfPayload::Error),
@@ -120,7 +136,7 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                             .write_all(write_slice)
                             .expect("could not write bytes to stream");
                     }
-                    Err(err) => panic!(err),
+                    Err(err) => panic!("Connection was closed! {}", err),
                 }
             }
         })?;
@@ -133,37 +149,47 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
 pub const READ_BUFFER_SIZE: usize = 128;
 
 /// used to read exact number of bytes from stream including any zero bytes
-fn read_bytes(stream: &mut TcpStream, len: usize) -> Result<Vec<u8>> {
+fn read_bytes(stream: &mut TcpStream, len: usize) -> Result<Option<Vec<u8>>> {
     let mut res = Vec::new();
     let mut buffer = [0u8; READ_BUFFER_SIZE];
     let mut read: usize = 0;
     while read < len {
         let bytes_to_read: usize = ::std::cmp::min(len - read, READ_BUFFER_SIZE);
         let mut buf_slice = &mut buffer[0..bytes_to_read];
-        read_exact(stream, &mut buf_slice).expect("could not read bytes from stream");
+        match read_exact(stream, &mut buf_slice).expect("could not read bytes from stream") {
+            StreamState::Closed => return Ok(None),//indicate that connection is closed -> nothing to read
+            StreamState::Open => (),
+        }
         read += bytes_to_read;
         res.extend_from_slice(buf_slice);
     }
-    Ok(res)
+    Ok(Some(res))
 }
 
 /// used inside read_bytes to fill a slice from stream input data including any zero bytes
 fn read_exact(
     reader: &mut TcpStream,
     mut buf: &mut [u8],
-) -> ::std::result::Result<(), ::std::io::Error> {
+) -> ::std::result::Result<StreamState, ::std::io::Error> {
     while !buf.is_empty() {
         match reader.read(buf) {
             Ok(n) => {
+                // check if connection was closed
+                if n == 0 {
+                    info!("closed {:?}", reader.peer_addr());
+                    reader.shutdown(Shutdown::Both).expect("error while closing stream");
+                    return Ok(StreamState::Closed);
+                }
                 let tmp = buf;
                 buf = &mut tmp[n..];
             }
             Err(e) => return Err(e),
         }
     }
-    if !buf.is_empty() {
-        Ok(())
-    } else {
-        Ok(())
-    }
+    Ok(StreamState::Open)
+}
+
+enum StreamState {
+    Closed,
+    Open,
 }
