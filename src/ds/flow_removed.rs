@@ -1,7 +1,7 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use num_traits::{FromPrimitive, ToPrimitive};
 use std::convert::{Into, TryFrom};
-use std::io::{Cursor};
+use std::io::Cursor;
 
 use super::flow_match::Match;
 
@@ -10,14 +10,14 @@ use super::super::err::*;
 #[derive(Debug, PartialEq, Clone)]
 pub struct FlowRemoved {
     cookie: u64,
-    
+
     priority: u16,
     reason: FlowRemovedReason,
     table_id: u8,
 
     duration_sec: u32,
     duration_nsec: u32,
-    
+
     idle_timeout: u16,
     hard_timeout: u16,
 
@@ -52,14 +52,14 @@ impl<'a> TryFrom<&'a [u8]> for FlowRemoved {
 
         Ok(FlowRemoved {
             cookie: cookie,
-            
+
             priority: priority,
             reason: reason,
             table_id: table_id,
 
             duration_sec: duration_sec,
             duration_nsec: duration_nsec,
-            
+
             idle_timeout: idle_timeout,
             hard_timeout: hard_timeout,
 
@@ -89,15 +89,15 @@ impl Into<Vec<u8>> for FlowRemoved {
     }
 }
 
-/// Why was this flow removed? 
+/// Why was this flow removed?
 #[derive(Primitive, PartialEq, Debug, Clone)]
 pub enum FlowRemovedReason {
-    /// Flow idle time exceeded idle_timeout. 
-    IdleTimeout = 0, 
-    /// Time exceeded hard_timeout. 
-    HardTimeout = 1, 
-    /// Evicted by a DELETE flow mod. 
-    Delete = 2, 
-    /// Group was removed. 
-    GroupDelete = 3, 
+    /// Flow idle time exceeded idle_timeout.
+    IdleTimeout = 0,
+    /// Time exceeded hard_timeout.
+    HardTimeout = 1,
+    /// Evicted by a DELETE flow mod.
+    Delete = 2,
+    /// Group was removed.
+    GroupDelete = 3,
 }

@@ -59,10 +59,10 @@ pub fn start_switch_connection(stream_in: TcpStream, ctl_ch: Sender<IncomingMsg>
                         ds::flow_removed::FlowRemoved::try_from(&payload_bytes[..])
                             .expect("error while try_from FlowRemoved"),
                     )),
-                    ds::Type::PortStatus => {
-                        error!("No PortStatus support (yet?)");
-                        None
-                    }
+                    ds::Type::PortStatus => Some(ds::OfPayload::PortStatus(
+                        ds::port_status::PortStatus::try_from(&payload_bytes[..])
+                            .expect("error while try_from PortStatus"),
+                    )),
                     ds::Type::MultipartReply => {
                         error!("No MultipartReply support (yet?)");
                         None

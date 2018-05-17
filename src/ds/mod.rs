@@ -12,6 +12,7 @@ pub mod features;
 pub mod flow_instructions;
 pub mod flow_match;
 pub mod flow_mod;
+pub mod flow_removed;
 pub mod group_mod;
 pub mod hw_addr;
 pub mod meter_mod;
@@ -20,12 +21,12 @@ pub mod packet_in;
 pub mod packet_out;
 pub mod packet_queue;
 pub mod port_mod;
+pub mod port_status;
 pub mod ports;
 pub mod queue_config;
 pub mod role;
 pub mod switch_config;
 pub mod table_mod;
-pub mod flow_removed;
 
 /// defines an OpenFlow message
 /// header + payload
@@ -286,7 +287,7 @@ pub enum OfPayload {
 
     PacketIn(packet_in::PacketIn),
     FlowRemoved(flow_removed::FlowRemoved),
-    PortStatus,
+    PortStatus(port_status::PortStatus),
 
     PacketOut(packet_out::PacketOut),
     FlowMod(flow_mod::FlowMod),
